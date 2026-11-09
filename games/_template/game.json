@@ -1,0 +1,8 @@
+{
+  "title": "Template game",
+  "description": "Copy this folder to start a new game.",
+  "mode": "score",
+  "scoreOrder": "desc",
+  "width": 640,
+  "height": 480
+}

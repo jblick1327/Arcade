@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Template game</title>
+</head>
+<body>
+<h1>Click as fast as you can</h1>
+<p id="who"></p>
+<button id="start">Start (5 seconds)</button>
+<button id="click" disabled>Click me</button>
+<p>Clicks: <span id="count">0</span></p>
+<p id="result"></p>
+
+<!-- 1. Include the SDK. -->
+<script src="/sdk/arcade.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+let count = 0;
+
+// 2. Ask who is playing (optional). user is null for guests.
+Arcade.ready().then(({ user }) => {
+  $('who').textContent = user ? 'Playing as ' + user.name : 'Playing as guest (score will not be saved)';
+});
+
+$('start').onclick = () => {
+  count = 0;
+  $('count').textContent = 0;
+  $('result').textContent = '';
+  $('start').disabled = true;
+  $('click').disabled = false;
+  setTimeout(async () => {
+    $('click').disabled = true;
+    $('start').disabled = false;
+    // 3. Submit a number when the game ends. That is the whole integration.
+    const r = await Arcade.submitScore(count);
+    $('result').textContent = r.ok ? 'Score saved: ' + count : 'Score not saved (' + r.reason + ')';
+  }, 5000);
+};
+$('click').onclick = () => { $('count').textContent = ++count; };
+</script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+{
+  "title": "Automate",
+  "description": "Draft armies, then watch Stockfish play them out.",
+  "mode": "match",
+  "scoreOrder": "desc",
+  "width": 980,
+  "height": 720
+}

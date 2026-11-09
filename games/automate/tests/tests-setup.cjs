@@ -1,0 +1,32 @@
+const assert=require('node:assert/strict');
+const A=require('../setup.js'), R=require('../rules.js');
+const idx=a=>{const file='abcdefgh'.indexOf(a[0]),rank=8-Number(a[1]);return rank*8+file;};
+let s=A.create();
+assert.equal(s.turn,'w');assert.equal(A.points(s.armies.w),0);assert.equal(A.points(s.armies.b),0);
+assert.deepEqual(s.armies.w,Array(64).fill(null));assert.deepEqual(s.armies.b,Array(64).fill(null));
+function put(p,square){const result=A.perform(s,p,idx(square));assert.equal(result.error,'',`Place ${p} on ${square}: ${result.error}`);s=result.state;}
+put('K','e1');assert.equal(s.turn,'b');put('K','e8');assert.equal(s.turn,'w');
+put('Q','d1');put('Q','d8');assert.equal(s.turn,'w');
+assert.equal(A.perform(s,'K',idx('c1')).error,'One king per player.');
+assert.equal(A.perform(s,'P',idx('c1')).error,'Pawns cannot go on the back rank.');
+assert.ok(A.perform(s,'P',idx('a5')).error);
+assert.ok(A.perform(s,'P',idx('e8')).error);
+assert.equal(A.points(s.armies.w),9);assert.equal(A.points(s.armies.b),9);
+let u=A.undo(s);assert.equal(u.error,'');assert.equal(u.state.turn,'b');assert.equal(u.state.armies.b[idx('d8')],null);s=u.state;
+put('Q','d8');
+let f=A.finish(s);assert.equal(f.error,'');s=f.state;assert.equal(s.turn,'b');assert.equal(A.complete(s),false);
+put('R','a8');assert.equal(s.turn,'b'); // white is done
+f=A.finish(s);assert.equal(f.error,'');s=f.state;assert.equal(A.complete(s),true);
+const pos=R.parseFen(A.fen(s));assert.equal(pos.b[R.index('e1')],'K');assert.equal(pos.b[R.index('e8')],'k');
+assert.equal(A.undo(s).state.done.b,false);
+let budget=A.create();budget=A.perform(budget,'Q',idx('d1')).state;
+budget=A.perform(budget,'P',idx('a6')).state;
+budget=A.perform(budget,'Q',idx('e1')).state;
+budget=A.perform(budget,'P',idx('b6')).state;
+budget=A.perform(budget,'Q',idx('f1')).state;
+budget=A.perform(budget,'P',idx('c6')).state;
+const blocked=A.perform(budget,'Q',idx('g1'));
+assert.equal(blocked.error,'Not enough points.');
+assert.equal(A.points(budget.armies.w),27);
+const bad= A.perform(budget,'P',idx('h8'));assert.ok(bad.error);
+console.log('Setup verified (empty board, alternating picks, king restriction, costs, undo, done, FEN).');

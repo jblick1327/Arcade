@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Automate</title>
+<link rel="stylesheet" href="win2000.css">
+<link rel="stylesheet" href="style.css">
+<script src="/sdk/arcade.js"></script>
+<script defer src="rules.js"></script>
+<script defer src="setup.js"></script>
+<script defer src="app.js"></script>
+</head>
+<body>
+<main id="page" class="win-window">
+  <header class="win-titlebar">
+    <div class="win-titletext"><span class="win-icon" aria-hidden="true">♜</span><h1>AUTOMATE</h1></div>
+    <div class="win-caption-buttons" aria-hidden="true"><span>_</span><span>□</span><span>×</span></div>
+  </header>
+  <div class="win-content">
+    <div id="score" class="win-scores" aria-label="Points">
+      <div class="win-score"><strong>WHITE</strong> <span id="whitePoints">0/35</span></div>
+      <div class="win-score"><strong>BLACK</strong> <span id="blackPoints">0/35</span></div>
+    </div>
+    <div id="layout">
+      <div id="left">
+        <div id="board" role="grid" aria-label="Chess board"></div>
+      </div>
+      <div id="right">
+        <fieldset id="setupPanel">
+          <legend>SETUP</legend>
+          <h2 id="turn">WHITE</h2>
+          <div id="pieceTools" aria-label="Pieces"></div>
+          <p id="message" role="status" aria-live="polite"></p>
+          <div class="win-actions"><button id="doneBtn">DONE</button><button id="undoBtn">UNDO</button><button id="clearBtn">CLEAR</button></div>
+        </fieldset>
+        <fieldset id="battlePanel" hidden>
+          <legend>GAME</legend>
+          <h2 id="gameStatus">GAME</h2>
+          <div class="win-actions"><button id="playBtn">PAUSE</button><button id="stepBtn">STEP</button></div>
+          <p class="win-think"><label for="thinkMs">TIME:</label>
+            <select id="thinkMs">
+              <option value="100">0.1s</option>
+              <option value="300">0.3s</option>
+              <option value="600" selected>0.6s</option>
+              <option value="1200">1.2s</option>
+              <option value="2500">2.5s</option>
+              <option value="5000">5s</option>
+              <option value="10000">10s</option>
+            </select>
+          </p>
+          <div class="win-actions"><button id="rematchBtn">REMATCH</button><button id="newBtn">NEW</button></div>
+          <div id="moves" aria-label="Moves"></div>
+        </fieldset>
+      </div>
+    </div>
+  </div>
+  <footer class="win-statusbar"><span id="engineStatus" role="status" aria-live="polite"></span><span class="win-grip" aria-hidden="true"></span></footer>
+</main>
+</body>
+</html>

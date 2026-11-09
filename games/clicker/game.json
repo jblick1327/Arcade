@@ -1,0 +1,8 @@
+{
+  "title": "Clicker",
+  "description": "Click as fast as you can. Example score game.",
+  "mode": "score",
+  "scoreOrder": "desc",
+  "width": 640,
+  "height": 480
+}
