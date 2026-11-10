@@ -16,6 +16,9 @@ function statusLine(m, showDev) {
   return `${a} vs ${b} — in progress`;
 }
 
+/** An active Automate match whose legacy draft the current rules cannot continue. */
+const needsRestart = (m) => m?.game === 'automate' && m.status === 'active' && !!m.state?.restartRequired;
+
 function CopyInvite() {
   const [status, setStatus] = useState('');
 
@@ -59,6 +62,9 @@ export default function Play({ user }) {
   }, [slug]);
 
   useEffect(() => { loadBoard(); }, [loadBoard]);
+
+  // A restart error belongs to the view it happened in.
+  useEffect(() => { setRestartError(''); }, [slug, matchId]);
 
   useEffect(() => {
     setMatch(null);
@@ -113,7 +119,10 @@ export default function Play({ user }) {
     } else {
       if (r.data?.match && matchId === m.id) setMatch(r.data.match);
       if (!matchId) loadLobby();
-      setRestartError(r.data?.error || 'Could not restart the draft. Please try again.');
+      // If the other player already restarted it, the refreshed match is the success case.
+      if (!(r.data?.match && !needsRestart(r.data.match))) {
+        setRestartError(r.data?.error || 'Could not restart the draft. Please try again.');
+      }
     }
   }
 
@@ -135,9 +144,9 @@ export default function Play({ user }) {
             {lobby.map((m) => (
               <li key={m.id}>
                 {m.players[0].name}{' '}
-                {m.game === 'automate' && m.state?.restartRequired && <span>Draft needs restart. </span>}
+                {needsRestart(m) && <span>Draft needs restart. </span>}
                 {user && (m.you !== null
-                  ? m.game === 'automate' && m.state?.restartRequired
+                  ? needsRestart(m)
                     ? <button type="button" disabled={restarting} onClick={() => restartDraft(m)}>Restart draft</button>
                     : <button type="button" onClick={() => openMatch(m.id)}>Resume</button>
                   : <button type="button" onClick={() => join(m.id)}>Join</button>)}
@@ -150,14 +159,14 @@ export default function Play({ user }) {
       {isMatchGame && matchId && (
         <section>
           <p>{match ? statusLine(match, showAutomateDev) : 'Loading match…'}</p>
-          {match?.game === 'automate' && match.status === 'active' && match.state?.restartRequired && (
+          {needsRestart(match) && (
             <p>This saved draft cannot continue under the new placement rules.{' '}
               {inMatch
                 ? <button type="button" disabled={restarting} onClick={() => restartDraft(match)}>Restart draft for both players</button>
                 : 'Either player can restart the draft.'}
             </p>
           )}
-          {showAutomateDev && inMatch && match.status === 'waiting' && <CopyInvite key={matchId} />
+          {showAutomateDev && inMatch && match.status === 'waiting' && <CopyInvite key={matchId} />}
           {user && match && !inMatch && match.status === 'waiting' && (
             <p><button type="button" onClick={() => join(matchId)}>Join this match</button></p>
           )}

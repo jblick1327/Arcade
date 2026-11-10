@@ -80,13 +80,14 @@ router.post('/matches/:id/restart-draft', requireAuth, async (req, res) => {
   if (!m.players.some((p) => String(p) === req.userId)) {
     return res.status(403).json({ error: 'You are not in this match' });
   }
+  // Check staleness first so a player racing an already-applied restart gets a refresh, not a refusal.
+  if (req.body?.version !== m.version) {
+    return res.status(409).json({ error: 'Match changed, refresh', match: await present(m, req.userId) });
+  }
   const restart = m.game === 'automate' && m.status === 'active'
     ? restartIncompatibleDraft(m.state) : null;
   if (!restart) {
     return res.status(409).json({ error: 'Draft restart is not available', match: await present(m, req.userId) });
-  }
-  if (req.body?.version !== m.version) {
-    return res.status(409).json({ error: 'Match changed, refresh', match: await present(m, req.userId) });
   }
   const updated = await Match.findOneAndUpdate(
     { _id: m._id, game: 'automate', status: 'active', version: m.version },
