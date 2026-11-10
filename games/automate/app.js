@@ -5,8 +5,8 @@ const A=window.ArmySetup,R=window.ChessRules,$=id=>document.getElementById(id);
 const ICON={w:{P:'♙',N:'♘',B:'♗',R:'♖',Q:'♕',K:'♔'},b:{P:'♟︎',N:'♞',B:'♝',R:'♜',Q:'♛',K:'♚'}};
 const PIECE={P:'Pawn',N:'Knight',B:'Bishop',R:'Rook',Q:'Queen',K:'King',X:'Erase'};
 let draft=A.create(),phase='draft',brush='P';
-let game=null,worker=null,ready=false,searching=false,waiting=false,discard=false,timer=null,timeout=null,engineId=0;
-let engineSkill,soundPlayer;
+let game=null,worker=null,ready=false,searching=false,discard=false,timeout=null,engineId=0;
+let engineSkill,soundPlayer,soundContext;
 const colorOf=p=>p===p.toUpperCase()?'w':'b';
 // Online (Arcade match) state. Everything below is inert when no match is attached.
 let online=false,match=null,you=null,busy=false,engineStarted=false;
@@ -16,9 +16,31 @@ function amRunner(){return online&&phase==='battle'&&match&&match.state&&you!==n
 function sharedDraft(d){return {armies:d.armies,turn:d.turn,done:d.done};}
 function info(text,error=false){$('message').textContent=text;$('message').classList.toggle('error',error);}
 function engineInfo(text){$('engineStatus').textContent=text;}
+function checkmateChime(){
+ const Context=window.AudioContext||window.webkitAudioContext;
+ if(!Context)return;
+ soundContext??=new Context();
+ if(soundContext.state==='suspended')soundContext.resume().catch(()=>{});
+ const start=soundContext.currentTime+.02;
+ // A brief three-note desktop chime, distinct from ordinary moves and captures.
+ for(const [frequency,offset,duration] of [[523.25,0,.14],[659.25,.14,.14],[783.99,.28,.42]]){
+  const oscillator=soundContext.createOscillator(),volume=soundContext.createGain();
+  oscillator.type='triangle';
+  oscillator.frequency.value=frequency;
+  volume.gain.setValueAtTime(.0001,start+offset);
+  volume.gain.exponentialRampToValueAtTime(.07,start+offset+.018);
+  volume.gain.exponentialRampToValueAtTime(.0001,start+offset+duration);
+  oscillator.connect(volume);
+  volume.connect(soundContext.destination);
+  oscillator.start(start+offset);
+  oscillator.stop(start+offset+duration+.02);
+ }
+}
 function sound(cue){
  if(!$('sound').checked)return;
+ if(cue==='checkmate'){checkmateChime();return;}
  soundPlayer??=new Audio();
+ soundPlayer.volume=cue==='capture'?.5:.14;
  soundPlayer.src='sounds/'+cue+'.wav';
  soundPlayer.play().catch(()=>{});
 }
@@ -137,9 +159,8 @@ $('doneBtn').addEventListener('click',()=>{
 $('undoBtn').addEventListener('click',()=>useResult(A.undo(draft)));
 $('clearBtn').addEventListener('click',()=>{draft=A.create();brush='P';info('');render();});
 function send(cmd){if(worker)worker.postMessage(cmd);}
-function cancelTimer(){if(timer){clearTimeout(timer);timer=null;}waiting=false;}
 function killEngine(){
- engineId++;cancelTimer();clearTimeout(timeout);
+ engineId++;clearTimeout(timeout);
  if(worker){worker.terminate();worker=null;}
  ready=false;searching=false;discard=false;engineSkill=undefined;
 }
@@ -195,7 +216,7 @@ async function startEngine(){
  timeout=setTimeout(()=>{if(id===engineId&&!ready)engineFailed(new Error('Engine initialization timed out. Check WASM and browser console.'));},45000);
 }
 function doneIfFinished(){if(phase!=='battle'||!game)return true;const st=R.status(game.history);if(st.done||st.claim){game.finished=true;game.paused=true;game.pendingStep=false;game.drawClaim=st.claim||'';return true;}return false;}
-function requestMove(){if(phase!=='battle'||!ready||searching||waiting||game.finished||game.paused&&!game.pendingStep)return;
+function requestMove(){if(phase!=='battle'||!ready||searching||game.finished||game.paused&&!game.pendingStep)return;
  if(doneIfFinished()){render();return;}
  const skill=online?20:Number($('skillLevel').value);
  if(skill!==engineSkill){send('setoption name Skill Level value '+skill);engineSkill=skill;}
@@ -212,7 +233,9 @@ function recordMove(g,before,move,uci){
 function moveFeedback(){
  const {capture,target}=game.last;
  if(capture)$('board').children[target].classList.add('capture');
- sound(capture?'capture':'piece');
+ const state=game.history.at(-1);
+ const checkmate=game.finished&&!R.legal(state).length&&R.checked(state);
+ sound(checkmate?'checkmate':capture?'capture':'piece');
 }
 function bestMove(best){if(!searching)return;searching=false;
  if(discard){discard=false;requestMove();return;}
@@ -224,19 +247,32 @@ function bestMove(best){if(!searching)return;searching=false;
  if(online){publishMove();return;}
  scheduleNext();
 }
-function scheduleNext(){if(!game.paused&&!game.finished){waiting=true;timer=setTimeout(()=>{waiting=false;timer=null;requestMove();},Number($('moveDelay').value));}}
+function scheduleNext(){if(!game.paused&&!game.finished)requestMove();}
 $('playBtn').addEventListener('click',()=>{
  if(phase!=='battle'||!ready||game.finished)return;
  if(game.paused){game.paused=false;game.pendingStep=false;render();requestMove();}else{
-  game.paused=true;game.pendingStep=false;cancelTimer();if(searching){discard=true;send('stop');}render();
+  game.paused=true;game.pendingStep=false;if(searching){discard=true;send('stop');}render();
  }
 });
 $('stepBtn').addEventListener('click',()=>{
  if(phase!=='battle'||!ready||game.finished)return;
- game.paused=true;game.pendingStep=true;cancelTimer();if(searching){discard=true;send('stop');}else requestMove();render();
+ game.paused=true;game.pendingStep=true;if(searching){discard=true;send('stop');}else requestMove();render();
 });
 $('thinkMs').addEventListener('change',e=>{if(game)game.thinkMs=Number(e.target.value);});
-$('sound').addEventListener('change',()=>{if($('sound').checked)sound('piece');else soundPlayer?.pause();});
+$('sound').addEventListener('change',()=>{
+ if($('sound').checked){
+  // Unlock Web Audio from a user gesture so the checkmate cue works later.
+  const Context=window.AudioContext||window.webkitAudioContext;
+  if(Context){
+   soundContext??=new Context();
+   if(soundContext.state==='suspended')soundContext.resume().catch(()=>{});
+  }
+  sound('piece');
+ }else{
+  soundPlayer?.pause();
+  soundContext?.suspend().catch(()=>{});
+ }
+});
 $('rematchBtn').addEventListener('click',()=>{killEngine();const check=validate(draft);if(check.error){engineInfo(check.error);return;}startBattle(check.state);});
 $('newBtn').addEventListener('click',()=>{killEngine();phase='draft';draft=A.create();game=null;brush='P';engineInfo('');info('');render();});
 render();engineInfo('');
