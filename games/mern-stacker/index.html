@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MERN Stacker</title>
+<link rel="stylesheet" href="style.css">
+<script src="/sdk/arcade.js"></script>
+<script defer src="rules.js"></script>
+<script defer src="app.js"></script>
+</head>
+<body>
+<main id="wrap">
+  <canvas id="canvas" width="480" height="640" aria-label="MERN Stacker playfield"></canvas>
+
+  <button id="sound" type="button" aria-label="Toggle sound" title="Toggle sound">sound: on</button>
+
+  <section id="intro" class="overlay">
+    <h1><span>MERN</span> Stacker</h1>
+    <p class="tag">Build the tallest full stack. No framework can save you now.</p>
+    <p class="legend"><b class="m">M</b>ongoDB <b class="e">E</b>xpress <b class="r">R</b>eact <b class="n">N</b>ode</p>
+    <button id="start" type="button">npm start</button>
+    <p class="hint">Click, tap or press Space to drop a block.<br>Line it up. Whatever overhangs gets deleted.</p>
+    <p class="who" id="who-intro"></p>
+  </section>
+
+  <section id="over" class="overlay" hidden>
+    <h2 id="fail-msg">Build failed</h2>
+    <p class="big"><span id="final">0</span><small> blocks high</small></p>
+    <p class="rank" id="rank"></p>
+    <p class="status" id="status"></p>
+    <button id="again" type="button">npm run retry</button>
+    <ol id="board" class="board"></ol>
+  </section>
+</main>
+</body>
+</html>
