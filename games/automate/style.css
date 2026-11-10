@@ -60,3 +60,7 @@ h2 { margin:2px 0 10px; font:bold 13px Tahoma,Arial,sans-serif; }
  #pieceTools { grid-template-columns:repeat(4,minmax(0,1fr)); }
  .piece { font-size:clamp(20px,8vw,34px); }
 }
+
+/* Keep the audio mix control compact inside the optional Settings panel. */
+#sfxVolume { width:88px; min-width:0; }
+#sfxValue { min-width:3.1em; text-align:right; }
