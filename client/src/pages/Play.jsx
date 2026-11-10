@@ -36,12 +36,16 @@ export default function Play({ user }) {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const matchId = params.get('match');
-  const showDev = import.meta.env.DEV && params.get('dev') === '1' && slug === 'automate';
+  const showDev = import.meta.env.DEV && params.get('dev') === '1';
+  const showAutomateDev = showDev && slug === 'automate';
 
   const [game, setGame] = useState(null); // null = loading, false = not found
   const [board, setBoard] = useState([]);
   const [match, setMatch] = useState(null);
   const [lobby, setLobby] = useState([]);
+  const [reloadCount, setReloadCount] = useState(0);
+  const [restarting, setRestarting] = useState(false);
+  const [restartError, setRestartError] = useState('');
   const iframeRef = useRef(null);
 
   useEffect(() => {
@@ -60,7 +64,7 @@ export default function Play({ user }) {
     setMatch(null);
     if (!game || !iframeRef.current) return undefined;
     return attachBridge(iframeRef.current, { slug, user, matchId, onScore: loadBoard, onMatch: setMatch });
-  }, [game, slug, user?.id, matchId, loadBoard]);
+  }, [game, slug, user?.id, matchId, loadBoard, reloadCount]);
 
   const isMatchGame = game && game.mode === 'match';
 
@@ -97,6 +101,22 @@ export default function Play({ user }) {
     }
   }
 
+  async function restartDraft(m) {
+    if (!window.confirm('Restart this incompatible Automate draft for both players? All placed pieces will be cleared.')) return;
+    setRestartError('');
+    setRestarting(true);
+    const r = await api('POST', `/matches/${m.id}/restart-draft`, { version: m.version });
+    setRestarting(false);
+    if (r.status === 200) {
+      if (matchId === m.id) setMatch(r.data);
+      else loadLobby();
+    } else {
+      if (r.data?.match && matchId === m.id) setMatch(r.data.match);
+      if (!matchId) loadLobby();
+      setRestartError(r.data?.error || 'Could not restart the draft. Please try again.');
+    }
+  }
+
   if (game === null) return <p>Loading…</p>;
   if (game === false) return <p>Game not found</p>;
 
@@ -105,6 +125,7 @@ export default function Play({ user }) {
   return (
     <main>
       <h1>{game.title}</h1>
+      {restartError && <p role="alert">{restartError}</p>}
 
       {isMatchGame && !matchId && (
         <section>
@@ -114,8 +135,11 @@ export default function Play({ user }) {
             {lobby.map((m) => (
               <li key={m.id}>
                 {m.players[0].name}{' '}
+                {m.game === 'automate' && m.state?.restartRequired && <span>Draft needs restart. </span>}
                 {user && (m.you !== null
-                  ? <button type="button" onClick={() => openMatch(m.id)}>Resume</button>
+                  ? m.game === 'automate' && m.state?.restartRequired
+                    ? <button type="button" disabled={restarting} onClick={() => restartDraft(m)}>Restart draft</button>
+                    : <button type="button" onClick={() => openMatch(m.id)}>Resume</button>
                   : <button type="button" onClick={() => join(m.id)}>Join</button>)}
               </li>
             ))}
@@ -125,8 +149,15 @@ export default function Play({ user }) {
 
       {isMatchGame && matchId && (
         <section>
-          <p>{match ? statusLine(match, showDev) : 'Loading match…'}</p>
-          {showDev && inMatch && match.status === 'waiting' && <CopyInvite key={matchId} />}
+          <p>{match ? statusLine(match, showAutomateDev) : 'Loading match…'}</p>
+          {match?.game === 'automate' && match.status === 'active' && match.state?.restartRequired && (
+            <p>This saved draft cannot continue under the new placement rules.{' '}
+              {inMatch
+                ? <button type="button" disabled={restarting} onClick={() => restartDraft(match)}>Restart draft for both players</button>
+                : 'Either player can restart the draft.'}
+            </p>
+          )}
+          {showAutomateDev && inMatch && match.status === 'waiting' && <CopyInvite key={matchId} />
           {user && match && !inMatch && match.status === 'waiting' && (
             <p><button type="button" onClick={() => join(matchId)}>Join this match</button></p>
           )}
@@ -134,9 +165,11 @@ export default function Play({ user }) {
         </section>
       )}
 
+      {showDev && <p><button type="button" onClick={() => setReloadCount((n) => n + 1)}>Reload game iframe</button></p>}
+
       <iframe
         ref={iframeRef}
-        key={slug + ':' + (matchId || 'local')}
+        key={slug + ':' + (matchId || 'local') + ':' + reloadCount}
         src={`/games/${slug}/`}
         width={game.width}
         height={game.height}

@@ -26,6 +26,12 @@ export function currentAutomateState(state) {
   return { phase: 'draft', draft: settled, runner: null, moves: [], placementOnly: true };
 }
 
+/** Only incompatible legacy drafts may be reset. The following placement starts at White. */
+export function restartIncompatibleDraft(state) {
+  if (!currentAutomateState(state)?.restartRequired) return null;
+  return { state: null, turn: 0, winner: null };
+}
+
 function save(patch, state, turn, history) {
   if (patch.turn !== turn || !isDeepStrictEqual(patch.state, state)) return null;
   const result = history && Chess.status(history);

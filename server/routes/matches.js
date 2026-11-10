@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 import { Match, User } from '../models.js';
 import { requireAuth } from '../auth.js';
 import { getGame } from '../games.js';
-import { currentAutomateState, validateAutomateUpdate } from '../automate.js';
+import { currentAutomateState, restartIncompatibleDraft, validateAutomateUpdate } from '../automate.js';
 
 const router = Router();
 
@@ -70,6 +70,35 @@ router.post('/matches/:id/join', requireAuth, async (req, res) => {
   );
   if (!upd) return res.status(409).json({ error: 'Match is full' });
   res.json(await present(upd, req.userId));
+});
+
+/** Either participant can reset a legacy draft that current rules cannot continue. */
+router.post('/matches/:id/restart-draft', requireAuth, async (req, res) => {
+  if (!validId(req.params.id)) return res.status(404).json({ error: 'Match not found' });
+  const m = await Match.findById(req.params.id);
+  if (!m) return res.status(404).json({ error: 'Match not found' });
+  if (!m.players.some((p) => String(p) === req.userId)) {
+    return res.status(403).json({ error: 'You are not in this match' });
+  }
+  const restart = m.game === 'automate' && m.status === 'active'
+    ? restartIncompatibleDraft(m.state) : null;
+  if (!restart) {
+    return res.status(409).json({ error: 'Draft restart is not available', match: await present(m, req.userId) });
+  }
+  if (req.body?.version !== m.version) {
+    return res.status(409).json({ error: 'Match changed, refresh', match: await present(m, req.userId) });
+  }
+  const updated = await Match.findOneAndUpdate(
+    { _id: m._id, game: 'automate', status: 'active', version: m.version },
+    { $set: restart, $inc: { version: 1 } },
+    { new: true },
+  );
+  if (!updated) {
+    const latest = await Match.findById(m._id);
+    return res.status(409).json({ error: 'Match changed, refresh',
+      match: latest ? await present(latest, req.userId) : null });
+  }
+  res.json(await present(updated, req.userId));
 });
 
 router.get('/matches/:id', async (req, res) => {

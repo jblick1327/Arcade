@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import Army from '../games/automate/setup.js';
 import Chess from '../games/automate/rules.js';
-import { currentAutomateState, validateAutomateUpdate } from './automate.js';
+import { currentAutomateState, restartIncompatibleDraft, validateAutomateUpdate } from './automate.js';
 
 const seat = color => color === 'w' ? 0 : 1;
 const patch = (draft, runner = null, moves = []) => ({
@@ -50,6 +50,19 @@ test('compatible saved drafts recalculate availability while incompatible drafts
   legacy.draft.armies.w[57] = 'N';
   assert.equal(currentAutomateState(legacy).restartRequired, true);
   assert.equal(validateAutomateUpdate(legacy, 0, patch(ready.draft)), null);
+});
+
+test('restart permits incompatible saved drafts but not healthy drafts or battles', () => {
+  const ready = draftKings();
+  const legacy = patch(ready.draft).state;
+  legacy.draft.armies.w[60] = null;
+  legacy.draft.armies.w[57] = 'N';
+  assert.deepEqual(restartIncompatibleDraft(legacy), { state: null, turn: 0, winner: null });
+  assert.equal(restartIncompatibleDraft(patch(ready.draft).state), null);
+  assert.equal(restartIncompatibleDraft(patch(ready.draft, 0).state), null);
+  const cleared = restartIncompatibleDraft(legacy);
+  const king = Army.perform(Army.create(), 'K', 60).state;
+  assert.ok(validateAutomateUpdate(cleared.state, cleared.turn, patch(king)));
 });
 
 test('a full draft starts the battle and the server accepts only one legal move from the runner', () => {

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
 
 export default function Home() {
+  const [params] = useSearchParams();
+  const showDev = import.meta.env.DEV && params.get('dev') === '1';
   const [games, setGames] = useState(null);
 
   useEffect(() => {
@@ -16,7 +18,7 @@ export default function Home() {
         <ul>
           {games.map((g) => (
             <li key={g.slug}>
-              <Link to={`/play/${g.slug}`}>{g.title}</Link> {g.description}
+              <Link to={`/play/${g.slug}${showDev ? '?dev=1' : ''}`}>{g.title}</Link> {g.description}
             </li>
           ))}
         </ul>

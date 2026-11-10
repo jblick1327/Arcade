@@ -5,6 +5,17 @@ const vm = require('node:vm');
 const { test } = require('node:test');
 const rules = require('../rules.js');
 
+test('the checked-in placement sample is a 130 ms mono PCM WAV', () => {
+  const wav = fs.readFileSync(path.join(__dirname, '../sounds/place.wav'));
+  assert.equal(wav.toString('ascii', 0, 4), 'RIFF');
+  assert.equal(wav.toString('ascii', 8, 12), 'WAVE');
+  assert.equal(wav.readUInt16LE(20), 1, 'PCM');
+  assert.equal(wav.readUInt16LE(22), 1, 'mono');
+  assert.equal(wav.readUInt16LE(34), 16, '16-bit samples');
+  const duration = 1000 * wav.readUInt32LE(40) / wav.readUInt32LE(28);
+  assert.ok(Math.abs(duration - 130) < 1, `expected 130 ms, got ${duration}`);
+});
+
 class Element {
   children = [];
   dataset = {};
