@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scarab 21</title>
+<link rel="stylesheet" href="win2000.css">
+<link rel="stylesheet" href="style.css">
+<script src="/sdk/arcade.js"></script>
+<script defer src="rules.js"></script>
+<script defer src="app.js"></script>
+</head>
+<body>
+<main id="page" class="win-window">
+  <header class="win-titlebar">
+    <div class="win-titletext"><span class="win-icon" aria-hidden="true">♠</span><h1>SCARAB 21</h1></div>
+    <div class="win-caption-buttons" aria-hidden="true"><span>_</span><span>□</span><span>×</span></div>
+  </header>
+  <div class="win-content">
+    <div class="win-scores">
+      <div class="win-score"><strong>SCORE</strong> <span id="score">0</span></div>
+      <div class="win-score"><strong>CARDS LEFT</strong> <span id="remaining">51</span></div>
+    </div>
+    <div id="layout">
+      <fieldset id="table">
+        <legend>TABLE</legend>
+        <div id="board">
+          <div id="draw">
+            <span class="draw-label">DRAW</span>
+            <div id="current"></div>
+          </div>
+          <div id="columns" role="group" aria-label="Columns"></div>
+        </div>
+        <div id="move-bar">
+          <span id="award" role="status">Place the draw.</span>
+          <button id="again" type="button" hidden>PLAY AGAIN</button>
+        </div>
+      </fieldset>
+      <fieldset id="guide">
+        <legend>SCORING</legend>
+        <p>Build to 21. J, Q, K = 10. A = 1 or 11.</p>
+        <dl>
+          <div><dt>Blackjack</dt><dd>21</dd></div>
+          <div><dt>Large 21 · 4–5 cards</dt><dd>15</dd></div>
+          <div><dt>7-7-7 or 6-7-8</dt><dd>15</dd></div>
+          <div><dt>21</dt><dd>10</dd></div>
+          <div><dt>5 under 21</dt><dd>5</dd></div>
+        </dl>
+        <p class="keyboard"><kbd>1</kbd>–<kbd>5</kbd> Place card</p>
+      </fieldset>
+    </div>
+  </div>
+  <footer class="win-statusbar"><span id="status" role="status">Place a card to begin.</span><span class="win-grip" aria-hidden="true"></span></footer>
+</main>
+</body>
+</html>
