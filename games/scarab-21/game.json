@@ -1,0 +1,8 @@
+{
+  "title": "Scarab 21",
+  "description": "Build five columns to 21 and score bonus combinations.",
+  "mode": "score",
+  "scoreOrder": "desc",
+  "width": 900,
+  "height": 540
+}
