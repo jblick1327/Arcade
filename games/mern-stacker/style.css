@@ -1,0 +1,86 @@
+:root {
+  --bg: #0d1117;
+  --fg: #e6edf3;
+  --dim: #8b949e;
+  --m: #13aa52;
+  --e: #aab2bd;
+  --r: #61dafb;
+  --n: #9ccc3c;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); overflow: hidden; }
+body { display: flex; align-items: center; justify-content: center; }
+
+/* Everything inside the frame is sized in em off this one font-size, which tracks the
+   frame's width (16px at the native 480px). The cards then scale exactly like the canvas
+   and keep the same layout on a phone. */
+#wrap {
+  position: relative;
+  height: min(100vh, 133.333vw);
+  aspect-ratio: 3 / 4;
+  max-width: 100vw;
+  container-type: size;
+  font-size: 16px;
+  font-size: calc(100cqw / 30);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+#canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+.overlay {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 0.625em; padding: 2.5em 1.5em 1.5em; text-align: center;
+  background: rgba(13, 17, 23, 0.9);
+  pointer-events: none;
+}
+.overlay[hidden], .overlay [hidden] { display: none; }
+.overlay p, .overlay h1, .overlay h2 { margin: 0; }
+.overlay button, .overlay .board { pointer-events: auto; }
+
+h1 { font-size: 2.125em; letter-spacing: -0.03em; }
+h1 span { color: var(--m); }
+h2 { font-size: 1.125em; color: #ff7b72; font-weight: 600; max-width: 24ch; line-height: 1.25; text-wrap: balance; }
+.tag { color: var(--dim); font-size: 0.875em; max-width: 30ch; text-wrap: balance; }
+.hint { margin-top: 0.25em; color: var(--dim); font-size: 0.75em; line-height: 1.5; }
+.who { color: var(--dim); font-size: 0.75em; min-height: 1em; }
+.aside { color: var(--dim); font-size: 0.75em; font-style: italic; }
+
+.mini { display: flex; flex-direction: column; align-items: center; gap: 0.18em; margin-top: 0.4em; font-size: 0.6875em; }
+.mini i { font-style: normal; font-weight: 700; padding: 0.18em 0; color: var(--bg); text-align: center; }
+.mini .r { width: 8.75em; background: var(--r); }
+.mini .e { width: 10.2em; background: var(--e); }
+.mini .n { width: 11.65em; background: var(--n); }
+.mini .m { width: 13.1em; background: var(--m); color: #fff; }
+
+.overlay .where { margin-top: -0.35em; font-size: 0.75em; color: var(--dim); }
+.big { font-size: 4em; line-height: 1; font-weight: 700; color: var(--r); }
+.big small { font-size: 0.21875em; color: var(--dim); font-weight: 400; }
+.rank { font-size: 0.9375em; color: var(--n); max-width: 28ch; text-wrap: balance; }
+.overlay .best { margin-top: -0.5em; font-size: 0.75em; color: #f2cc60; }
+.cut { font-size: 0.75em; color: #ff7b72; max-width: 34ch; line-height: 1.4; text-wrap: balance; }
+.status { font-size: 0.75em; color: var(--dim); min-height: 1.2em; }
+
+button {
+  font: inherit; color: var(--bg); background: var(--m);
+  border: 0; border-radius: 0.375em; padding: 0.625em 1.375em; font-size: 1em; font-weight: 700; cursor: pointer;
+}
+button:hover { filter: brightness(1.12); }
+button:focus-visible { outline: 2px solid var(--r); outline-offset: 2px; }
+
+#sound {
+  position: absolute; top: 0.5em; right: 0.5em; z-index: 2;
+  background: rgba(255, 255, 255, 0.08); color: var(--dim);
+  font-size: 0.6875em; font-weight: 400; padding: 0.35em 0.7em;
+}
+
+.board {
+  list-style: none; margin: 0.4em 0 0; padding: 0; width: min(21.5em, 100%);
+  font-size: 0.75em; color: var(--dim); text-align: left;
+}
+.board:empty { display: none; }
+.board li { display: flex; justify-content: space-between; gap: 1em; padding: 0.15em 0; border-bottom: 1px dotted #30363d; }
+.board li span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.board li b { color: var(--fg); flex: none; }
