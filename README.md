@@ -36,9 +36,9 @@ Everything goes through pull requests into `master`; please don't push to it dir
 - **Adding a game:** see [GAMES.md](GAMES.md). Drop a folder into `games/` and refresh; no server or client code changes. Keep your changes inside your own game's folder.
 - **Changing the site itself** (server, client, SDK): keep it small and say why in the PR.
 - Before opening a PR, run `npm test` and `npm run build`. CI runs both on every PR and must pass before it can be merged.
-- [SPEC.md](SPEC.md) is the original design document. It's a useful reference for how the site works, but you don't need it to add a game.
+- [ARCHITECTURE.md](ARCHITECTURE.md) explains how the site, the API and the SDK fit together. It's a useful reference, but you don't need it to add a game.
 
 ## Notes
 
-- No extra dependencies beyond those in `SPEC.md`. `games/package.json` only marks game files as CommonJS so Automate's Node tests can `require` them despite the root `"type": "module"`.
+- No extra dependencies beyond those listed in `ARCHITECTURE.md`. `games/package.json` only marks game files as CommonJS so Automate's Node tests can `require` them despite the root `"type": "module"`.
 - Tests: `npm test` runs `server/**/*.test.js` and each game's `tests/*.cjs`. A game's tests can also be run alone, e.g. `node --test games/scarab-21/tests/rules.cjs`. CI (`.github/workflows/ci.yml`) runs the tests, the build and a high-severity `npm audit` on every push and pull request.

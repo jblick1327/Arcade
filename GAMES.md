@@ -83,7 +83,7 @@ If you add tests for your game, put them in `games/<your-game>/tests/*.cjs` and 
 
 ## Two-player games
 
-Set `"mode": "match"` in `game.json`. `games/automate/` is the worked example; the full API is in the "Matches" section of `SPEC.md`. The short version:
+Set `"mode": "match"` in `game.json`. `games/automate/` is the worked example; the full API is in the "Matches" section of `ARCHITECTURE.md`. The short version:
 
 - A **match** is a shared piece of data: whose turn it is, a `state` object that you define (up to 64,000 characters of JSON), a version number, and who won. The site keeps it in the database and handles creating, listing and joining matches, so you only write the game.
 - Get the current match with `const { match } = await Arcade.ready()` or `Arcade.match.get()`. `match.you` is your seat, `0` or `1`, or `null` if you're only watching, and `match.turn` is whose move it is.
