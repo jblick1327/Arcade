@@ -1,108 +1,30 @@
-# Scarab 21 sound design
+# Scarab 21 audio notes
 
-Scarab's sound should feel like ivory cards on green felt, with a restrained
-golden score flourish rather than a casino slot machine. It must be comfortable
-over repeated, quick keyboard placements.
+Direction: quiet card-on-felt rustle for the frequently repeated action, a
+stronger column clear for scoring, and the existing board-clear sound for rare
+large bonuses. Keep audio optional and off by default.
 
-## Cue hierarchy
+| Event | Cue |
+| --- | --- |
+| Place | 130 ms soft filtered-noise rustle, one sample |
+| Column clear | Existing 220 ms clear |
+| Blackjack / special 21 | Column clear plus short highlight |
+| Rare high-value hand | Column clear plus rising two-note flourish |
+| Board clear | Existing 370 ms board clear |
+| Deck recycle | Delayed bonus flourish |
+| Game over | Gentle descending ending |
 
-| Event | Primary cue | Additional accent |
-| --- | --- | --- |
-| Normal placement | 75 ms place sample | None |
-| Ordinary 21 or five-card clear | 220 ms column-clear sample | None |
-| Blackjack, Large 21, 7-7-7, 6-7-8 | Same column-clear | Single short rising highlight |
-| Super / Double Blackjack, Full House | Same column-clear | Two gentle ascending notes |
-| Straight / 5 of a Kind board clear | 370 ms board-clear sample | None (already distinctive) |
-| Deck exhausted and recycled | Keep its original physical cue | Delayed two-note bonus |
-| Run ends | Keep the current physical cue | Delayed two-note descending finish |
+A single physical sample plays per placement, even when multiple awards occur.
+Per-event gains are .44 (place), .50 (column), .54 (board). Slight playback-rate
+randomization reduces repetition. A single master gain supplies effects volume;
+no compressor, ducking, or placement-only filter is needed.
 
-Only one physical sample is played for each card placement. Multiple awards
-may coexist (e.g. column clear + deck recycle). The event's main sample is
-never doubled; bonuses are separate, delayed accents.
+The old 75 ms placement had approximately 54% of spectral energy above
+2.5 kHz and 60% of its energy within the first 10 ms; it sounded snare-like
+even when filtered. The replacement 130 ms asset has a gradual ~18 ms onset
+and ~75 ms release, with ~1.5% of its energy in the first 10 ms.
+These are signal properties, not a browser listening test.
 
-## Gain staging
-
-- Samples are the original local 22.05 kHz 16-bit mono files.
-- Their original lengths are roughly 75 ms (place), 220 ms (column clear)
-  and 370 ms (board clear).
-- Per-event sample gains are 0.40, 0.50 and 0.54 respectively. The existing
-  source sample peaks are about -17.3, -17.2 and -16.0 dBFS.
-- Mild random playback-rate variation (+/-2%) reduces repetitive tapping.
-  Only the ordinary place sample is pitched down to 94% of its nominal
-  speed. Its 1500 Hz low-pass filter and 3 ms attack ramp reduce the
-  snare-like top end while keeping the card's lower body. Clear samples
-  bypass the filter and keep their original pitch.
-- Synthesized accents use low-level triangle tones (0.02–0.03 gain) and
-  are delayed until after the physical attack.
-- A direct 0.85-ceiling master gain plus 70% initial slider setting leaves
-  sufficient digital headroom. No dynamics compressor or ducking buses.
-- Web Audio buffer sources allow concurrent short one-shots without one
-  clip cutting off another. While WAV decoding is pending, a quiet transient
-  fallback prevents the first click from becoming silent.
-- Audio is optional, off by default and locally controlled in Quick Rules;
-  the effects-volume slider stays in the nested Sound settings disclosure.
-
-## Frequency and decision rationale
-
-In a 10,000-run random legal-placement simulation matching the rules,
-about 92% of placements were ordinary placements, about 8% produced
-a column or board clear, and 18.5 placements occurred per run on average.
-This is not a human strategy distribution. It suggests simple taps must
-remain unobtrusive and noticeable score events should be occasional
-rather than triggering a fanfare every turn.
-
-## QA checklist
-
-1. Enable audio, place 20+ cards with clicks and the 1–5 shortcuts:
-   ordinary placements must stay light and not cut each other off.
-2. Clear a column at 21 and with five cards under 21; neither should play
-   two complete clear samples.
-3. Compare a plain 21 with Blackjack and Full House. Higher-value awards
-   should feel more special through melodic shape, not drastically greater
-   loudness.
-4. Test Straight and 5 of a Kind: these clear all columns and should use the
-   distinct board-clear sample, not the column-clear sample.
-5. End a run on a placement or clear: the descending game-over notes
-   should follow the main event.
-6. Test Deck Clear occurring on a scoring move: the deck bonus must add an
-   accent without triggering a duplicate card-placement sound.
-7. Repeat with reduced motion, sound off, then on again, and headphones
-   and laptop speakers. No sound depends on an animation completing.
-
-The signal analysis, cue structure and node-level tests are technical checks,
-not a substitute for listening to the finished game in a browser.
-
-## Mix stress check
-
-An offline sample-level simulation combined the actual three WAVs with
-the synthesized accent envelopes at the shipped gains, including a
-worst-case board clear, deck recycle, and game-over on one placement:
-
-| Event | Peak (dBFS) |
-| --- | ---: |
-| Ordinary placement (before softer tap adjustment) | -29.2 |
-| Standard column clear | -27.8 |
-| Blackjack column clear | -27.8 |
-| Full House column clear | -27.8 |
-| Board clear | -25.9 |
-| Board + deck-clear bonus | -25.9 |
-| Board + deck-clear + game over | -25.9 |
-
-All cases have very substantial peak headroom, so compression is unnecessary.
-The 220–370 ms reward samples have a stronger sustained impression than the
-75 ms placement sample, even when peaks are close. These are offline modeled
-levels and do not constitute an evaluated perceptual mix.
-
-## Ordinary placement refinement
-
-Feedback indicated the ordinary placement resembled a snare drum. A source
-sample analysis found about 54% of the sample's frequency-domain energy
-above 2.5 kHz, with about 60% of its time-domain energy concentrated
-within the first 10 ms. A rough first-order low-pass model at 1.5 kHz
-combined with a 3 ms attack reduces the tap's peak by about 4.8 dB
-before the separate 0.40/0.43 gain adjustment. The implemented Web
-Audio BiquadFilter is a **different filter** from that offline model,
-so 4.8 dB should not be taken as a measured browser attenuation.
-
-The softer tap uses a shared low-pass node, not a compressor or a
-complex bus. The score-clear samples are intentionally unchanged.
+QA: repeat 20 fast placements, confirm no sharp clicks; check ordinary 21,
+high-value hands, full-board clears, deck recycling, and end-of-run overlapping
+awards. Check sound off, sound on and effects-volume controls.
