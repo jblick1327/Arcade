@@ -4,6 +4,12 @@ assert.match(css,/grid-template-rows:\s*repeat\(8,\s*minmax\(0,\s*1fr\)\)/);
 assert.match(css,/min-height:\s*0;\s*overflow:\s*hidden;/);
 const vm=require('node:vm'),fs=require('node:fs');
 const window={ChessRules:require('../rules.js'),ArmySetup:require('../setup.js')};
+const soundEvents=[];
+window.AutomateAudio={
+ play:(cue)=>soundEvents.push(cue),
+ setEnabled:(value)=>soundEvents.push(value?'enabled':'disabled'),
+ setVolume:()=>{},
+};
 class Element {
  constructor(tag='div'){this.tag=tag;this.children=[];this.dataset={};this.listeners={};this.className='';this.textContent='';this.value='600';this.disabled=false;this.hidden=false;this.classList={add:(...names)=>{this.className+=' '+names.join(' ');},toggle:(name,enabled)=>{this.className=this.className.replace(new RegExp('\\b'+name+'\\b','g'),'').trim()+(enabled?' '+name:'');}};}
  setAttribute(name,v){this[name]=v;}
@@ -17,6 +23,7 @@ const ids=['board','engineStatus','setupPanel','battlePanel','whitePoints','blac
 const elements=Object.fromEntries(ids.map(id=>[id,new Element()]));
 elements.skillLevel.value='7';
 const document={getElementById:id=>{assert.ok(elements[id],id);return elements[id];},createElement:tag=>new Element(tag)};
+elements.sound.checked=true;
 const commands=[];
 let deliveredMoves=0;
 class FakeWorker{
@@ -45,6 +52,9 @@ assert.equal(elements.whitePoints.textContent,'35 points left');
 assert.equal(elements.whiteLocked.hidden,true);
 assert.match(elements.draftHint.textContent,/king/);
 assert.equal(elements.message.textContent,'');
+elements.sound.listeners.change();
+assert.ok(soundEvents.includes('enabled'));
+assert.ok(soundEvents.includes('draft'),'Enabling sound gives quiet confirmation');
 const choose=name=>{
  const btn=elements.pieceTools.children.find(el=>el.children[1].textContent.startsWith(name));assert.ok(btn,name);btn.click();};
 const pick=i=>{const square=elements.board.children[i];elements.board.listeners.click({target:square});};
@@ -61,12 +71,15 @@ assert.equal(elements.whitePoints.textContent,'26 points left');assert.equal(ele
 elements.doneBtn.click();assert.equal(elements.turn.textContent,'Black is drafting');
 assert.equal(elements.whiteLocked.hidden,false);
 elements.doneBtn.click();assert.equal(elements.setupPanel.hidden,true);assert.equal(elements.battlePanel.hidden,false);
+assert.ok(soundEvents.filter(cue=>cue==='draft').length>=2,'Draft placement sounds are classified');
+assert.ok(soundEvents.includes('lock'),'Locking an army has its own cue');
 assert.equal(elements.board.children.length,64);
 setImmediate(()=>{
  assert.equal(elements.gameStatus.textContent==='ENGINE ERROR',false,'Mock UCI initialized');
  assert.ok(elements.moves.children.length>0,'Mock engine made its first legal move');
  assert.ok(commands.includes('setoption name Skill Level value 7'));
  assert.ok(commands.includes('go movetime 600'));
+ assert.ok(soundEvents.some(cue=>['move','capture','check','castle','promotion','checkmate','draw'].includes(cue)),'Battle moves use event-specific sounds');
  assert.match(elements.engineStatus.textContent,/STOCKFISH 11/);
  console.log('Browser UCI simulated: board starts empty, alternating draft, engine initializes and plays legal move.');
 });
