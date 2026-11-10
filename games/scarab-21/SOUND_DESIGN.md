@@ -25,9 +25,13 @@ never doubled; bonuses are separate, delayed accents.
 - Samples are the original local 22.05 kHz 16-bit mono files.
 - Their original lengths are roughly 75 ms (place), 220 ms (column clear)
   and 370 ms (board clear).
-- Per-event sample gains are 0.43, 0.50 and 0.54 respectively. The existing
+- Per-event sample gains are 0.40, 0.50 and 0.54 respectively. The existing
   source sample peaks are about -17.3, -17.2 and -16.0 dBFS.
 - Mild random playback-rate variation (+/-2%) reduces repetitive tapping.
+  Only the ordinary place sample is pitched down to 94% of its nominal
+  speed. Its 1500 Hz low-pass filter and 3 ms attack ramp reduce the
+  snare-like top end while keeping the card's lower body. Clear samples
+  bypass the filter and keep their original pitch.
 - Synthesized accents use low-level triangle tones (0.02–0.03 gain) and
   are delayed until after the physical attack.
 - A direct 0.85-ceiling master gain plus 70% initial slider setting leaves
@@ -76,7 +80,7 @@ worst-case board clear, deck recycle, and game-over on one placement:
 
 | Event | Peak (dBFS) |
 | --- | ---: |
-| Ordinary placement | -29.2 |
+| Ordinary placement (before softer tap adjustment) | -29.2 |
 | Standard column clear | -27.8 |
 | Blackjack column clear | -27.8 |
 | Full House column clear | -27.8 |
@@ -88,3 +92,17 @@ All cases have very substantial peak headroom, so compression is unnecessary.
 The 220–370 ms reward samples have a stronger sustained impression than the
 75 ms placement sample, even when peaks are close. These are offline modeled
 levels and do not constitute an evaluated perceptual mix.
+
+## Ordinary placement refinement
+
+Feedback indicated the ordinary placement resembled a snare drum. A source
+sample analysis found about 54% of the sample's frequency-domain energy
+above 2.5 kHz, with about 60% of its time-domain energy concentrated
+within the first 10 ms. A rough first-order low-pass model at 1.5 kHz
+combined with a 3 ms attack reduces the tap's peak by about 4.8 dB
+before the separate 0.40/0.43 gain adjustment. The implemented Web
+Audio BiquadFilter is a **different filter** from that offline model,
+so 4.8 dB should not be taken as a measured browser attenuation.
+
+The softer tap uses a shared low-pass node, not a compressor or a
+complex bus. The score-clear samples are intentionally unchanged.
