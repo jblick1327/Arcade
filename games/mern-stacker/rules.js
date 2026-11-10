@@ -8,13 +8,39 @@
   const REGROW_AT = 3;    // consecutive perfects before blocks start to grow back
   const MIN_W = 2;        // anything thinner than this is just gone
 
-  // Blocks cycle through the stack in order: M, E, R, N, M, E, ...
+  // Blocks cycle bottom-up in real architecture order: the database at the bottom,
+  // the runtime on top of it, the server framework on the runtime, the client on top.
+  // (The acronym says M-E-R-N. The acronym was never in order.)
   const STACK = [
-    { letter: 'M', name: 'MongoDB', color: '#13aa52', ink: '#ffffff' },
-    { letter: 'E', name: 'Express', color: '#aab2bd', ink: '#1b1f24' },
-    { letter: 'R', name: 'React', color: '#61dafb', ink: '#0b2530' },
-    { letter: 'N', name: 'Node', color: '#9ccc3c', ink: '#1b2a08' },
+    {
+      letter: 'M', name: 'MongoDB', color: '#13aa52', ink: '#ffffff',
+      perfect: ['Index hit!', 'Write acknowledged', 'Replica set happy'],
+      fail: ['MongoServerError: connection refused', 'E11000 duplicate key error', 'Schema? We said schemaless.'],
+    },
+    {
+      letter: 'N', name: 'Node', color: '#9ccc3c', ink: '#1b2a08',
+      perfect: ['Event loop clear', 'Non-blocking!', '0 vulnerabilities'],
+      fail: ['FATAL ERROR: JavaScript heap out of memory', 'UnhandledPromiseRejection', "Error: Cannot find module 'tower'"],
+    },
+    {
+      letter: 'E', name: 'Express', color: '#aab2bd', ink: '#1b1f24',
+      perfect: ['200 OK', 'Route matched', 'next() called'],
+      fail: ['Cannot GET /tower', '500 Internal Server Error', "Can't set headers after they are sent"],
+    },
+    {
+      letter: 'R', name: 'React', color: '#61dafb', ink: '#0b2530',
+      perfect: ['No re-renders!', 'Hydrated cleanly', 'Hooks in order'],
+      fail: ['Too many re-renders', 'Each child in a list should have a unique "key" prop', 'Hydration mismatch'],
+    },
   ];
+
+  // Every overhang you slice off is scope you just cut. It gets worse as the run goes on.
+  const CUTS = [
+    'dark mode', 'i18n', 'animations', 'the onboarding tour', 'docs', 'the README',
+    'mobile layout', 'accessibility', 'unit tests', 'integration tests', 'error handling',
+    'input validation', 'logging', 'rate limiting', 'auth', 'backups', 'password hashing', 'the database',
+  ];
+  const CUTS_AFTER = 'whatever was left';
 
   const RANKS = [
     [0, 'Unemployed'],
@@ -26,17 +52,6 @@
     [48, 'Principal Engineer'],
     [70, 'Distinguished Engineer'],
     [100, 'CTO (still has root access)'],
-  ];
-
-  const PERFECT_QUIPS = ['Hot reload!', 'Zero downtime!', 'LGTM', 'Cache hit!', 'Shipped to prod!', 'Tests passing!'];
-  const FAIL_QUIPS = [
-    'Build failed: block not found',
-    'Uncaught TypeError: tower is undefined',
-    'ECONNREFUSED: block never connected',
-    'Segmentation fault (core dumped)',
-    'npm ERR! missing peer dependency',
-    'Merge conflict in tower.js',
-    'Works on my machine',
   ];
 
   function blockFor(index) {
@@ -75,6 +90,29 @@
     return { x, w };
   }
 
+  // Name of the n-th feature cut in a run (0-based).
+  function cutLabel(n) {
+    return n < CUTS.length ? CUTS[n] : CUTS_AFTER;
+  }
+
+  // "dark mode, i18n, ... password hashing" for the game-over card: the first two and the
+  // latest, because the escalation is the joke.
+  function cutSummary(cuts) {
+    if (cuts.length === 0) return '';
+    if (cuts.length <= 3) return cuts.join(', ');
+    return cuts[0] + ', ' + cuts[1] + ', \u2026 ' + cuts[cuts.length - 1];
+  }
+
+  // Placing the block at `level` finishes a whole Mongo-Node-Express-React set.
+  // Returns the release number it ships (1, 2, ...) or 0.
+  function releaseAt(level) {
+    return level % STACK.length === STACK.length - 1 ? (level + 1) / STACK.length : 0;
+  }
+
+  function releaseLabel(n) {
+    return n === 1 ? 'v1.0.0: MVP shipped!' : 'v' + n + '.0.0 shipped!';
+  }
+
   function rankFor(score) {
     let title = RANKS[0][1];
     for (const [min, name] of RANKS) if (score >= min) title = name;
@@ -87,8 +125,8 @@
 
   const rules = {
     FIELD_W, START_W, PERFECT_PX, REGROW_PX, REGROW_AT, MIN_W,
-    STACK, RANKS, PERFECT_QUIPS, FAIL_QUIPS,
-    blockFor, speedFor, drop, regrow, rankFor, pick,
+    STACK, CUTS, RANKS,
+    blockFor, speedFor, drop, regrow, cutLabel, cutSummary, releaseAt, releaseLabel, rankFor, pick,
   };
   if (typeof module === 'object' && module.exports) module.exports = rules;
   else window.MernStacker = rules;

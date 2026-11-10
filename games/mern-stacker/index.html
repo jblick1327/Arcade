@@ -17,17 +17,20 @@
 
   <section id="intro" class="overlay">
     <h1><span>MERN</span> Stacker</h1>
-    <p class="tag">Build the tallest full stack. No framework can save you now.</p>
-    <p class="legend"><b class="m">M</b>ongoDB <b class="e">E</b>xpress <b class="r">R</b>eact <b class="n">N</b>ode</p>
+    <p class="tag">Build the tallest full stack, in the order it actually runs.</p>
+    <div class="mini" aria-hidden="true"><i class="r">React</i><i class="e">Express</i><i class="n">Node</i><i class="m">MongoDB</i></div>
+    <p class="aside">(The acronym was never in order.)</p>
     <button id="start" type="button">npm start</button>
-    <p class="hint">Click, tap or press Space to drop a block.<br>Line it up. Whatever overhangs gets deleted.</p>
+    <p class="hint">Click, tap or press Space to drop a block.<br>Whatever overhangs is scope you just cut.</p>
     <p class="who" id="who-intro"></p>
   </section>
 
   <section id="over" class="overlay" hidden>
     <h2 id="fail-msg">Build failed</h2>
+    <p class="where" id="fail-where"></p>
     <p class="big"><span id="final">0</span><small> blocks high</small></p>
     <p class="rank" id="rank"></p>
+    <p class="cut" id="cut"></p>
     <p class="status" id="status"></p>
     <button id="again" type="button">npm run retry</button>
     <ol id="board" class="board"></ol>

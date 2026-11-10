@@ -2,8 +2,35 @@ const assert = require('node:assert/strict');
 const { test } = require('node:test');
 const R = require('../rules.js');
 
-test('blocks cycle through M, E, R, N and repeat', () => {
-  assert.deepEqual([0, 1, 2, 3, 4, 5].map((i) => R.blockFor(i).letter), ['M', 'E', 'R', 'N', 'M', 'E']);
+test('blocks stack bottom-up in architecture order, not acronym order', () => {
+  assert.deepEqual([0, 1, 2, 3, 4, 5].map((i) => R.blockFor(i).name), ['MongoDB', 'Node', 'Express', 'React', 'MongoDB', 'Node']);
+});
+
+test('every layer has its own perfect and failure lines', () => {
+  for (const layer of R.STACK) {
+    assert.ok(layer.perfect.length > 0, layer.name);
+    assert.ok(layer.fail.length > 0, layer.name);
+  }
+});
+
+test('scope cuts escalate in order and then run out', () => {
+  assert.equal(R.cutLabel(0), R.CUTS[0]);
+  assert.equal(R.cutLabel(R.CUTS.length - 1), 'the database');
+  assert.equal(R.cutLabel(R.CUTS.length), 'whatever was left');
+});
+
+test('the cut summary keeps the first two and the latest', () => {
+  assert.equal(R.cutSummary([]), '');
+  assert.equal(R.cutSummary(['a', 'b']), 'a, b');
+  assert.equal(R.cutSummary(['a', 'b', 'c', 'd', 'e']), 'a, b, \u2026 e');
+});
+
+test('a release ships when a React block completes a set', () => {
+  // Level 0 is the starting MongoDB block, so levels 3, 7, 11 are React.
+  assert.deepEqual([1, 2, 3, 4, 7, 11].map(R.releaseAt), [0, 0, 1, 0, 2, 3]);
+  for (const level of [3, 7, 11]) assert.equal(R.blockFor(level).name, 'React');
+  assert.equal(R.releaseLabel(1), 'v1.0.0: MVP shipped!');
+  assert.equal(R.releaseLabel(3), 'v3.0.0 shipped!');
 });
 
 test('a drop within the tolerance is perfect and snaps to the block below', () => {

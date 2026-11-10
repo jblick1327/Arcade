@@ -24,7 +24,7 @@
   // ---------------------------------------------------------------- state
   let phase = 'intro';     // intro | playing | dying | over
   let blocks, mover, debris, popups, rings;
-  let score, combo, camY, shake, dyingFor, overSince, failMsg;
+  let score, combo, camY, shake, dyingFor, overSince, failMsg, failWhere, cuts;
   let best = 0;
   let runId = 0;
 
@@ -33,6 +33,7 @@
     debris = [];
     popups = [];
     rings = [];
+    cuts = [];
     score = 0;
     combo = 0;
     camY = 0;
@@ -116,7 +117,8 @@
 
     if (!res.ok) {
       addDebris(res.cut, level, style, mover.dir);
-      failMsg = R.pick(R.FAIL_QUIPS);
+      failMsg = R.pick(style.fail);
+      failWhere = style.name + ' layer crashed at tower.js:' + level;
       phase = 'dying';
       dyingFor = 0;
       shake = reduceMotion ? 0 : 10;
@@ -124,7 +126,12 @@
       return;
     }
 
-    if (res.cut) addDebris(res.cut, level, style);
+    if (res.cut) {
+      addDebris(res.cut, level, style);
+      const label = R.cutLabel(cuts.length);
+      cuts.push(label);
+      popup('- ' + label, level, res.cut.x + res.cut.w / 2, '#ff7b72');
+    }
 
     let placed = res.placed;
     if (res.perfect) {
@@ -133,7 +140,7 @@
       const regrew = grown.w > placed.w;
       placed = grown;
       rings.push({ x: placed.x, w: placed.w, wy: worldTop(level), t: 0 });
-      popup(R.pick(R.PERFECT_QUIPS) + (combo > 1 ? ' x' + combo : '') + (regrew ? ' +width' : ''),
+      popup(R.pick(style.perfect) + (combo > 1 ? ' x' + combo : '') + (regrew ? ' +width' : ''),
         level, placed.x + placed.w / 2, '#7ee787');
       beep(520 * Math.pow(2, Math.min(combo - 1, 12) * 2 / 12), 0.18, 'triangle', 0.14);
     } else {
@@ -143,8 +150,9 @@
 
     blocks.push(placed);
     score++;
-    if (score % R.STACK.length === 0) {
-      popup('FULL STACK!', level + 1, W / 2, '#f2cc60');
+    const release = R.releaseAt(level);
+    if (release) {
+      popup(R.releaseLabel(release), level + 1, W / 2, '#f2cc60');
       beep(880, 0.25, 'square', 0.06);
     }
     spawnMover();
@@ -184,6 +192,10 @@
     best = Math.max(best, finalScore);
 
     $('fail-msg').textContent = failMsg;
+    $('fail-where').textContent = failWhere;
+    $('cut').textContent = cuts.length
+      ? 'Shipped without: ' + R.cutSummary(cuts) + (cuts.length > 3 ? ' (' + cuts.length + ' cuts)' : '')
+      : 'Shipped with zero scope cuts. Suspicious.';
     $('final').textContent = finalScore;
     $('rank').textContent = 'Rank: ' + R.rankFor(finalScore) + (newBest && finalScore > 0 ? '  (new session best)' : '');
     $('status').textContent = finalScore > 0 ? 'Deploying score…' : 'Nothing was shipped.';
@@ -314,7 +326,8 @@
     ctx.fillText(String(score), W / 2, 78);
     ctx.fillStyle = 'rgba(139,148,158,0.8)';
     ctx.font = '12px ui-monospace, Menlo, Consolas, monospace';
-    ctx.fillText('stack.length', W / 2, 98);
+    const scope = Math.round(100 * blocks[blocks.length - 1].w / R.START_W);
+    ctx.fillText('stack.length  \u00b7  scope ' + scope + '%', W / 2, 98);
     if (combo >= 2) {
       ctx.fillStyle = '#7ee787';
       ctx.fillText('perfect streak x' + combo, W / 2, 118);

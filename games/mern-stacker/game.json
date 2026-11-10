@@ -1,6 +1,6 @@
 {
   "title": "MERN Stacker",
-  "description": "Stack MongoDB, Express, React and Node into the tallest full stack you can. Miss the drop and your build fails.",
+  "description": "Stack MongoDB, Node, Express and React into the tallest full stack you can. Every overhang is scope you cut.",
   "mode": "score",
   "scoreOrder": "desc",
   "width": 480,

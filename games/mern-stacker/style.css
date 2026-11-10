@@ -37,9 +37,16 @@ h1 { margin: 0; font-size: 34px; letter-spacing: -1px; }
 h1 span { color: var(--m); }
 h2 { margin: 0; font-size: 18px; color: #ff7b72; font-weight: 600; max-width: 24ch; }
 .tag { margin: 0; color: var(--dim); font-size: 14px; max-width: 30ch; }
-.legend { margin: 6px 0 2px; font-size: 14px; }
-.legend b { font-size: 18px; }
 .m { color: var(--m); } .e { color: var(--e); } .r { color: var(--r); } .n { color: var(--n); }
+.mini { display: flex; flex-direction: column; align-items: center; gap: 2px; margin: 6px 0 0; }
+.mini i { font-style: normal; font-size: 11px; font-weight: 700; padding: 2px 0; color: #0d1117; text-align: center; }
+.mini .r { width: 96px; background: var(--r); }
+.mini .e { width: 112px; background: var(--e); }
+.mini .n { width: 128px; background: var(--n); }
+.mini .m { width: 144px; background: var(--m); color: #fff; }
+.aside { margin: 0; color: var(--dim); font-size: 12px; font-style: italic; }
+.where { margin: -4px 0 0; font-size: 12px; color: var(--dim); }
+.cut { margin: 0; font-size: 12px; color: #ff7b72; max-width: 34ch; line-height: 1.4; }
 .hint { margin: 4px 0 0; color: var(--dim); font-size: 12px; line-height: 1.5; }
 .who { margin: 0; color: var(--dim); font-size: 12px; min-height: 1em; }
 .big { margin: 0; font-size: 64px; line-height: 1; font-weight: 700; color: var(--r); }
