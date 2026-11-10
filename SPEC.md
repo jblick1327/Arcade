@@ -1,5 +1,7 @@
 # Arcade — build spec
 
+> **Contributors:** you don't need this file to add a game. Start with [GAMES.md](GAMES.md). This is the original design document, kept as a reference for how the site, the API and the SDK fit together. Some of its instructions (such as "do not rewrite these files") were written for the AI agent that built the first version.
+
 A small MERN site that hosts web games made by a group of classmates. Players log in, play, and their scores are recorded. One game (Automate) is two-player online.
 
 This spec is written for an implementing agent. Build the phases in order. Each phase ends with checks that must pass before starting the next.
