@@ -3,20 +3,23 @@
 'use strict';
 const A=window.ArmySetup,R=window.ChessRules,$=id=>document.getElementById(id);
 const ICON={w:{P:'♙',N:'♘',B:'♗',R:'♖',Q:'♕',K:'♔'},b:{P:'♟︎',N:'♞',B:'♝',R:'♜',Q:'♛',K:'♚'}};
-const PIECE={P:'Pawn',N:'Knight',B:'Bishop',R:'Rook',Q:'Queen',K:'King',X:'Erase'};
-let draft=A.create(),phase='draft',brush='P';
+const PIECE={P:'Pawn',N:'Knight',B:'Bishop',R:'Rook',Q:'Queen',K:'King'};
+let draft=A.create(),phase='draft',brush='K';
 let game=null,worker=null,ready=false,searching=false,discard=false,timeout=null,engineId=0;
 const colorOf=p=>p===p.toUpperCase()?'w':'b';
 // Online (Arcade match) state. Everything below is inert when no match is attached.
-let online=false,match=null,you=null,busy=false,engineStarted=false;
+let online=false,match=null,you=null,busy=false,engineStarted=false,publishing=false;
 const myColor=()=>you===0?'w':you===1?'b':null;
-function canAct(){return !online||(!busy&&match&&match.status==='active'&&you!==null&&match.turn===you&&phase==='draft'&&draft.turn===myColor());}
+function setDraft(next){
+ draft=next;
+ brush=A.countKing(draft.armies[draft.turn])?'P':'K';
+}
+function canAct(){return !online||(!busy&&match&&match.status==='active'&&!match.state?.restartRequired&&you!==null&&match.turn===you&&phase==='draft'&&draft.turn===myColor());}
 function amRunner(){return online&&phase==='battle'&&match&&match.state&&you!==null&&match.state.runner===you;}
-function sharedDraft(d){return {armies:d.armies,turn:d.turn,done:d.done};}
 function info(text,error=false){$('message').textContent=text;$('message').classList.toggle('error',error);}
 function engineInfo(text){$('engineStatus').textContent=text;}
 function sound(cue,options){
- if($('sound').checked)window.AutomateAudio?.play(cue,options);
+ window.AutomateAudio?.play(cue,options);
 }
 function setStatus(id,text){
  const node=$(id);
@@ -37,7 +40,7 @@ function renderBoard(){
   if(legal)button.classList.add('deploy');
   if(phase==='battle'&&game.last&&(game.last.from===square||game.last.to===square))button.classList.add('last');
   const occupant=p?A.names[colorOf(p)]+' '+PIECE[p.toUpperCase()]:'empty';
-  const action=brush==='X'?'can erase':'can place '+PIECE[brush];
+  const action='can place '+PIECE[brush];
   button.setAttribute('aria-label',square+', '+occupant+(legal?', '+action:''));
   if(p){const span=document.createElement('span');span.className='piece '+colorOf(p);span.textContent=ICON[colorOf(p)][p.toUpperCase()];button.append(span);}
   if(c===0){const label=document.createElement('span');label.className='coord rank';label.textContent=8-r;button.append(label);}
@@ -46,11 +49,11 @@ function renderBoard(){
  }
  if(drafting&&focused!==undefined)board.children[focused]?.focus({preventScroll:true});
 }
-function renderTools(){const tools=$('pieceTools');tools.replaceChildren();for(const p of ['P','N','B','R','Q','K','X']){
+function renderTools(){const tools=$('pieceTools');tools.replaceChildren();for(const p of ['P','N','B','R','Q','K']){
  const button=document.createElement('button');button.type='button';button.className='tool';button.setAttribute('aria-pressed',String(brush===p));button.disabled=!canAct();
- const sym=document.createElement('span');sym.className='symbol';sym.textContent=p==='X'?'⌫':ICON[draft.turn][p];
+ const sym=document.createElement('span');sym.className='symbol';sym.textContent=ICON[draft.turn][p];
  sym.setAttribute('aria-hidden','true');
- const label=document.createElement('span');label.className='cost';label.textContent=p==='X'?PIECE[p]:PIECE[p]+' · '+A.COST[p];
+ const label=document.createElement('span');label.className='cost';label.textContent=PIECE[p]+' · '+A.COST[p];
  button.append(sym,label);
  button.addEventListener('click',()=>{
   brush=p;
@@ -64,30 +67,29 @@ function renderDraftHint(){
  if(canAct()){
   const army=draft.armies[draft.turn];
   const king=A.countKing(army);
-  if(brush==='X')tip='Choose an outlined piece to erase it.';
-  else if(brush==='K'&&king)tip='Your king is already on the board.';
+  if(!king)tip='Place your king first.';
   else if(A.COST[brush]>A.BUDGET-A.points(army))tip='That piece costs more points than you have left.';
-  else if(!king)tip='Place a king before you lock your army.';
-  else tip='Choose a piece, then select an outlined square.';
+  else if(brush==='K')tip='Your king is already on the board.';
+  else tip='Choose a piece and select an outlined square. Placements are final.';
  }
  $('draftHint').textContent=tip;
 }
 function render(){
  $('whitePoints').textContent=(A.BUDGET-A.points(draft.armies.w))+' points left';
  $('blackPoints').textContent=(A.BUDGET-A.points(draft.armies.b))+' points left';
- $('whiteLocked').hidden=!draft.done.w;$('blackLocked').hidden=!draft.done.b;
+ const bothKings=A.countKing(draft.armies.w)&&A.countKing(draft.armies.b);
+ $('whiteComplete').hidden=!bothKings||!draft.done.w;$('blackComplete').hidden=!bothKings||!draft.done.b;
  $('setupPanel').hidden=phase!=='draft';$('battlePanel').hidden=phase!=='battle';
  if(phase==='draft'){
   const side=A.names[draft.turn];
   let turn=side+' is drafting';
   if(online){
    if(match.status==='waiting')turn='Waiting for opponent';
+   else if(match.state?.restartRequired)turn='This saved draft needs a new match';
    else if(busy)turn='Saving your draft…';
    else if(canAct())turn='Your turn · '+side;
   }
   setStatus('turn',turn);renderDraftHint();
-  $('doneBtn').disabled=A.countKing(draft.armies[draft.turn])!==1||!canAct();
-  $('undoBtn').disabled=draft.history.length===0;
   renderTools();
  } else {
   const state=R.status(game.history),eng=ready||(online&&!amRunner());
@@ -107,33 +109,22 @@ function render(){
  renderBoard();
  if(online)onlineChrome();
 }
-function useResult(result){if(result.error){info(result.error,true);return false;}
- if(online){submitDraft(result.state);return true;}
- draft=result.state;brush='P';info('');render();return true;}
 $('board').addEventListener('click',e=>{
  const button=e.target.closest('button.sq');
  if(!button||phase!=='draft'||!canAct())return;
- const chosenBrush=brush;
- if(useResult(A.perform(draft,brush,Number(button.dataset.index)))&&chosenBrush!=='X')sound('draft');
+ const {state,error}=A.perform(draft,brush,Number(button.dataset.index));
+ if(error){info(error,true);return;}
+ sound('draft');
+ if(online){
+  if(A.complete(state))submitBattle(state);
+  else submitDraft(state);
+  return;
+ }
+ setDraft(state);info('');
+ if(A.complete(state))startBattle(A.battlePosition(state));
+ else render();
 });
-function validate(s){let state;try{state=R.parseFen(A.fen(s));}catch(e){return {error:e.message};}
- if(R.checked(state,1)||R.checked(state,-1))return {error:'Both kings must start out of check. Adjust your draft to continue.'};
- return {state};
-}
 function startBattle(start){phase='battle';game={history:[start],moves:[],uci:[],last:null,paused:false,finished:false,drawClaim:'',pendingStep:false,thinkMs:Number($('thinkMs').value)};render();startEngine();}
-$('doneBtn').addEventListener('click',()=>{
- if(!canAct())return;
- const result=A.finish(draft);
- if(result.error){info(result.error,true);return;}
- if(A.complete(result.state)){
-  const check=validate(result.state);
-  if(check.error){info(check.error,true);return;}
-  if(online){submitBattle(result.state);return;}
-  draft=result.state;startBattle(check.state);
- }else useResult(result);
-});
-$('undoBtn').addEventListener('click',()=>useResult(A.undo(draft)));
-$('clearBtn').addEventListener('click',()=>{draft=A.create();brush='P';info('');render();});
 function send(cmd){if(worker)worker.postMessage(cmd);}
 function killEngine(){
  engineId++;clearTimeout(timeout);
@@ -192,7 +183,7 @@ async function startEngine(){
  timeout=setTimeout(()=>{if(id===engineId&&!ready)engineFailed(new Error('Engine initialization timed out. Check WASM and browser console.'));},45000);
 }
 function doneIfFinished(){if(phase!=='battle'||!game)return true;const st=R.status(game.history);if(st.done||st.claim){game.finished=true;game.paused=true;game.pendingStep=false;game.drawClaim=st.claim||'';return true;}return false;}
-function requestMove(){if(phase!=='battle'||!ready||searching||game.finished||game.paused&&!game.pendingStep)return;
+function requestMove(){if(phase!=='battle'||!ready||searching||publishing||game.finished||game.paused&&!game.pendingStep)return;
  if(doneIfFinished()){render();return;}
  searching=true;send('position fen '+R.toFen(game.history.at(-1)));send('go movetime '+game.thinkMs);}
 function recordMove(g,before,move,uci){
@@ -220,9 +211,8 @@ function bestMove(best){if(!searching)return;searching=false;
  recordMove(game,before,move,R.key(move));game.pendingStep=false;
  doneIfFinished();render();moveFeedback();
  if(online){publishMove();return;}
- scheduleNext();
+ requestMove();
 }
-function scheduleNext(){if(!game.paused&&!game.finished)requestMove();}
 $('playBtn').addEventListener('click',()=>{
  if(phase!=='battle'||!ready||game.finished)return;
  if(game.paused){game.paused=false;game.pendingStep=false;render();requestMove();}else{
@@ -234,22 +224,19 @@ $('stepBtn').addEventListener('click',()=>{
  game.paused=true;game.pendingStep=true;if(searching){discard=true;send('stop');}else requestMove();render();
 });
 $('thinkMs').addEventListener('change',e=>{if(game)game.thinkMs=Number(e.target.value);});
-$('sound').addEventListener('change',()=>{
- window.AutomateAudio?.setEnabled($('sound').checked);
+$('sound').addEventListener('click',e=>{
+ const muted=window.AutomateAudio?.toggleMute();
+ e.currentTarget.textContent=muted?'Unmute sound':'Mute sound';
 });
-$('sfxVolume').addEventListener('input',e=>{
- $('sfxValue').textContent=e.target.value+'%';
- window.AutomateAudio?.setVolume(e.target.value);
-});
-$('rematchBtn').addEventListener('click',()=>{killEngine();const check=validate(draft);if(check.error){engineInfo(check.error);return;}startBattle(check.state);});
-$('newBtn').addEventListener('click',()=>{killEngine();phase='draft';draft=A.create();game=null;brush='P';engineInfo('');info('');render();});
+$('rematchBtn').addEventListener('click',()=>{killEngine();startBattle(A.battlePosition(draft));});
+$('newBtn').addEventListener('click',()=>{killEngine();phase='draft';setDraft(A.create());game=null;engineInfo('');info('');render();});
 render();engineInfo('');
 
 /* ---------- Online play through the Arcade SDK ---------- */
 function onlineChrome(){
  const runner=amRunner();
- $('undoBtn').hidden=true;$('clearBtn').hidden=true;$('rematchBtn').hidden=true;$('newBtn').hidden=true;
- $('playBtn').hidden=!runner;$('stepBtn').hidden=!runner;$('engineSettings').hidden=!runner;
+ $('rematchBtn').hidden=true;$('newBtn').hidden=true;
+ $('playBtn').hidden=!runner;$('stepBtn').hidden=!runner;$('settings').hidden=!runner;
 }
 function replay(s,prev){
  let cur=R.parseFen(A.fen(s.draft));
@@ -266,8 +253,8 @@ function applyMatch(m){
  if(!m)return;
  const previousMoves=game?.uci.length??(match?0:undefined);
  match=m;you=m.you;
- const s=m.state||{phase:'draft',draft:sharedDraft(A.create()),runner:null,moves:[]};
- draft={...s.draft,history:[]};
+ const s=m.state||{phase:'draft',draft:A.snapshot(A.create()),runner:null,moves:[]};
+ setDraft(s.draft);
  if(s.phase==='battle'){
   const runner=you!==null&&s.runner===you;
   if(!(runner&&game&&engineStarted&&m.status!=='done')){
@@ -283,35 +270,43 @@ function applyMatch(m){
  if(phase==='battle'&&!amRunner()&&previousMoves!==undefined&&game.uci.length>previousMoves)moveFeedback();
 }
 async function submitDraft(next){
- draft=next;brush='P';info('');busy=true;render();
- const r=await Arcade.match.update({state:{phase:'draft',draft:sharedDraft(next),runner:null,moves:[]},turn:next.turn==='w'?0:1});
+ setDraft(next);info('');busy=true;render();
+ const r=await Arcade.match.update({state:{phase:'draft',draft:A.snapshot(next),runner:null,moves:[]},turn:next.turn==='w'?0:1});
  busy=false;
  if(r.ok){applyMatch(r.match);return;}
  applyMatch(r.match||Arcade.match.get());
  info(r.reason==='conflict'?'Out of date — refreshed.':'Could not save — refreshed.',true);
 }
 async function submitBattle(done){
- busy=true;render();
- const r=await Arcade.match.update({state:{phase:'battle',draft:sharedDraft(done),runner:you,moves:[]},turn:you});
+ setDraft(done);info('');busy=true;render();
+ const r=await Arcade.match.update({state:{phase:'battle',draft:A.snapshot(done),runner:you,moves:[]},turn:you});
  busy=false;
  if(r.ok){applyMatch(r.match);return;}
  applyMatch(r.match||Arcade.match.get());
  info(r.reason==='conflict'?'Out of date — refreshed.':'Could not save — refreshed.',true);
 }
-// Runner only: send the moves so far (and the result once the game is over). One request at a time.
+// Keep one update in flight, including when the runner presses Step during a save.
 async function publishMove(){
- const body={state:{phase:'battle',draft:sharedDraft(draft),runner:you,moves:game.uci.slice()},turn:you};
+ const body={state:{phase:'battle',draft:A.snapshot(draft),runner:you,moves:game.uci.slice()},turn:you};
  if(game.finished)body.result={winner:winnerOf()};
- for(;;){
-  const r=await Arcade.match.update(body);
-  if(r.ok)break;
-  const cur=r.match||Arcade.match.get();
-  // Our earlier write may have landed even though the reply was lost.
-  if(cur&&cur.state&&cur.state.moves&&cur.state.moves.length===game.uci.length&&(!game.finished||cur.status==='done'))break;
-  if(r.reason==='conflict'){engineFailed(new Error('Out of sync with the server. Reload the page.'));return;}
-  await sleep(1500);
- }
- scheduleNext();
+ publishing=true;
+ try{
+  for(;;){
+   const r=await Arcade.match.update(body);
+   if(r.ok)break;
+   const cur=r.match||Arcade.match.get();
+   // Our earlier write may have landed even though the reply was lost.
+   const moves=cur?.state?.moves;
+   if(moves?.length===body.state.moves.length&&moves.every((move,i)=>move===body.state.moves[i])
+      &&(!body.result||cur.status==='done'))break;
+   if(r.reason==='conflict'||r.reason==='invalid-automate-update'){
+    engineFailed(new Error('Out of sync with the server. Reload the page.'));
+    return;
+   }
+   await sleep(1500);
+  }
+ }finally{publishing=false;}
+ requestMove();
 }
 if(window.Arcade){
  Arcade.ready().then(({match:m})=>{

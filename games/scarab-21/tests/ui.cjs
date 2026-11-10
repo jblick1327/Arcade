@@ -56,9 +56,7 @@ test('Scarab keeps accepting placements during a clear and plays one cue per out
     vm.runInContext(fs.readFileSync(path.join(__dirname, `../${script}.js`), 'utf8'), context);
   }
   const toggle = elements.get('sound');
-  toggle.checked = true;
-  toggle.listeners.change();
-  assert.deepEqual(played, [], 'Enabling sound has no cold-load preview');
+  assert.deepEqual(played, [], 'Nothing plays before a placement');
   await new Promise(setImmediate);
 
   document.listeners.keydown({ key: '1' });
@@ -75,8 +73,10 @@ test('Scarab keeps accepting placements during a clear and plays one cue per out
   assert.equal(game.over, true);
   assert.match(elements.get('result').textContent, /No column can take the King/);
   assert.deepEqual(played, ['column-clear', 'place', 'end']);
-  toggle.checked = false;
-  toggle.listeners.change();
+  toggle.listeners.click();
+  assert.equal(toggle.textContent, 'Unmute sound');
   window.ScarabAudio.play('place');
   assert.deepEqual(played, ['column-clear', 'place', 'end']);
+  toggle.listeners.click();
+  assert.equal(toggle.textContent, 'Mute sound');
 });

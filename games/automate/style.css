@@ -28,7 +28,7 @@ h2 { margin:2px 0 10px; font:bold 13px Tahoma,Arial,sans-serif; }
 .tool[aria-pressed="true"] { background:#efeee9; }
 #draftHint { margin:0 0 8px; color:#254764; }
 #draftHint:empty { display:none; }
-.locked { color:#265333; font-weight:bold; }
+.draft-complete { color:#265333; font-weight:bold; }
 .draft-rules { margin-top:10px; }
 .draft-rules p { margin:6px 0 0; line-height:1.4; }
 #message { margin:8px 0; color:#0a246a; font-size:11px; }
@@ -42,8 +42,7 @@ h2 { margin:2px 0 10px; font:bold 13px Tahoma,Arial,sans-serif; }
 .settings { padding:7px 9px; border:2px groove #fff; }
 .settings summary, .draft-rules summary { cursor:pointer; font-weight:bold; }
 .setting { display:flex; align-items:center; justify-content:space-between; gap:6px; margin-top:6px; }
-.sound-setting { justify-content:flex-start; }
-.sound-setting input { margin:0; }
+#sound { margin-top:8px; }
 @media (prefers-reduced-motion:reduce) { .sq.capture::after { animation:none; opacity:0; } }
 @media(max-width:760px) {
  #page { margin:8px; }
@@ -61,7 +60,3 @@ h2 { margin:2px 0 10px; font:bold 13px Tahoma,Arial,sans-serif; }
  #pieceTools { grid-template-columns:repeat(4,minmax(0,1fr)); }
  .piece { font-size:clamp(20px,8vw,34px); }
 }
-
-/* Keep the audio mix control compact inside the optional Settings panel. */
-#sfxVolume { width:88px; min-width:0; }
-#sfxValue { min-width:3.1em; text-align:right; }

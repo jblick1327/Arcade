@@ -14,8 +14,6 @@
   const board = document.getElementById('board');
   const columns = document.getElementById('columns');
   const soundToggle = document.getElementById('sound');
-  const volume = document.getElementById('sfxVolume');
-  const volumeLabel = document.getElementById('sfxValue');
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   let game;
   let badge;
@@ -45,7 +43,7 @@
   }
 
   function sound(cue) {
-    if (soundToggle.checked) window.ScarabAudio?.play(cue);
+    window.ScarabAudio?.play(cue);
   }
 
   const lanes = Array.from({ length: 5 }, (_, index) => {
@@ -139,12 +137,9 @@
     start();
     lanes[0].button.focus();
   });
-  soundToggle.addEventListener('change', () => {
-    window.ScarabAudio?.setEnabled(soundToggle.checked);
-  });
-  volume.addEventListener('input', () => {
-    volumeLabel.textContent = volume.value + '%';
-    window.ScarabAudio?.setVolume(volume.value);
+  soundToggle.addEventListener('click', () => {
+    const muted = window.ScarabAudio?.toggleMute();
+    soundToggle.textContent = muted ? 'Unmute sound' : 'Mute sound';
   });
 
   document.addEventListener('keydown', (event) => {

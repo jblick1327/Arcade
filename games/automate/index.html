@@ -20,8 +20,8 @@
   </header>
   <div class="win-content">
     <div id="score" class="win-scores" aria-label="Points">
-      <div class="win-score"><strong>WHITE</strong> <span id="whitePoints">35 points left</span> <span id="whiteLocked" class="locked" hidden>Army locked</span></div>
-      <div class="win-score"><strong>BLACK</strong> <span id="blackPoints">35 points left</span> <span id="blackLocked" class="locked" hidden>Army locked</span></div>
+      <div class="win-score"><strong>WHITE</strong> <span id="whitePoints">35 points left</span> <span id="whiteComplete" class="draft-complete" hidden>No placements</span></div>
+      <div class="win-score"><strong>BLACK</strong> <span id="blackPoints">35 points left</span> <span id="blackComplete" class="draft-complete" hidden>No placements</span></div>
     </div>
     <div id="layout">
       <div id="left">
@@ -34,11 +34,10 @@
           <p id="draftHint">Choose a piece, then select an outlined square.</p>
           <div id="pieceTools" aria-label="Pieces"></div>
           <p id="message" role="status" aria-live="polite"></p>
-          <div class="win-actions"><button id="doneBtn" aria-describedby="draftHint">Lock army</button><button id="undoBtn">Undo</button><button id="clearBtn">Clear</button></div>
           <details class="draft-rules">
             <summary>How to play</summary>
-            <p>Take turns placing or erasing one piece in your three home ranks. Pawns stay off the back rank. Each side has 35 points and needs one king.</p>
-            <p>Once both armies are locked, Stockfish plays both sides. Both kings must start out of check.</p>
+            <p>Place your kings first, then take turns placing one piece in your three home ranks. Each side has 35 points. Pawns stay off the back rank and neither king can be put in check.</p>
+            <p>Placements are final. If you have no legal placement, your turn is skipped. Stockfish starts automatically when neither player can place another piece.</p>
           </details>
         </fieldset>
         <fieldset id="battlePanel" hidden>
@@ -50,25 +49,19 @@
         </fieldset>
         <details id="settings" class="settings">
           <summary>Settings</summary>
-          <div id="engineSettings">
-            <label class="setting" for="thinkMs">Engine think time
-              <select id="thinkMs">
-                <option value="100">0.1 s</option>
-                <option value="300">0.3 s</option>
-                <option value="600" selected>0.6 s</option>
-                <option value="1200">1.2 s</option>
-                <option value="2500">2.5 s</option>
-                <option value="5000">5 s</option>
-                <option value="10000">10 s</option>
-              </select>
-            </label>
-          </div>
-          <label class="setting sound-setting"><input type="checkbox" id="sound"> Sound effects</label>
-          <label class="setting" for="sfxVolume">Effects volume
-            <input type="range" id="sfxVolume" min="0" max="100" step="5" value="70">
-            <output id="sfxValue" for="sfxVolume">70%</output>
+          <label class="setting" for="thinkMs">Engine think time
+            <select id="thinkMs">
+              <option value="100">0.1 s</option>
+              <option value="300">0.3 s</option>
+              <option value="600" selected>0.6 s</option>
+              <option value="1200">1.2 s</option>
+              <option value="2500">2.5 s</option>
+              <option value="5000">5 s</option>
+              <option value="10000">10 s</option>
+            </select>
           </label>
         </details>
+        <button id="sound" type="button">Mute sound</button>
       </div>
     </div>
   </div>

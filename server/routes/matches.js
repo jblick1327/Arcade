@@ -3,8 +3,17 @@ import mongoose from 'mongoose';
 import { Match, User } from '../models.js';
 import { requireAuth } from '../auth.js';
 import { getGame } from '../games.js';
+import { currentAutomateState, validateAutomateUpdate } from '../automate.js';
 
 const router = Router();
+
+function matchState(match) {
+  if (match.game !== 'automate') return { state: match.state, turn: match.turn };
+  const state = currentAutomateState(match.state);
+  let turn = match.turn;
+  if (state?.phase === 'draft' && !state.restartRequired) turn = state.draft.turn === 'w' ? 0 : 1;
+  return { state, turn };
+}
 
 async function present(docs, me) {
   const list = Array.isArray(docs) ? docs : [docs];
@@ -13,13 +22,14 @@ async function present(docs, me) {
   const names = Object.fromEntries(users.map((u) => [String(u._id), u.name]));
   const out = list.map((m) => {
     const idx = me ? m.players.findIndex((p) => String(p) === String(me)) : -1;
+    const { state, turn } = matchState(m);
     return {
       id: String(m._id),
       game: m.game,
       players: m.players.map((p) => ({ id: String(p), name: names[String(p)] || '?' })),
       status: m.status,
-      turn: m.turn,
-      state: m.state,
+      turn,
+      state,
       winner: m.winner,
       version: m.version,
       you: idx < 0 ? null : idx,
@@ -78,7 +88,8 @@ router.put('/matches/:id', requireAuth, async (req, res) => {
   const { version, state, turn, result } = req.body || {};
   const conflict = async (doc) =>
     res.status(409).json({ error: 'Match changed, refresh', match: await present(doc, req.userId) });
-  if (m.status !== 'active' || idx !== m.turn || version !== m.version) return conflict(m);
+  const current = matchState(m);
+  if (m.status !== 'active' || idx !== current.turn || version !== m.version) return conflict(m);
   if (turn !== 0 && turn !== 1) return res.status(400).json({ error: 'turn must be 0 or 1' });
   if (state === undefined || JSON.stringify(state).length > 64000) {
     return res.status(400).json({ error: 'state missing or too large' });
@@ -86,8 +97,11 @@ router.put('/matches/:id', requireAuth, async (req, res) => {
   if (result != null && ![0, 1, null].includes(result.winner)) {
     return res.status(400).json({ error: 'result.winner must be 0, 1 or null' });
   }
-  const set = { state, turn };
-  if (result) { set.winner = result.winner; set.status = 'done'; }
+  const set = m.game === 'automate'
+    ? validateAutomateUpdate(current.state, idx, { state, turn, result })
+    : { state, turn };
+  if (!set) return res.status(400).json({ error: 'invalid-automate-update' });
+  if (m.game !== 'automate' && result) { set.winner = result.winner; set.status = 'done'; }
   const upd = await Match.findOneAndUpdate(
     { _id: m._id, version: m.version, status: 'active' },
     { $set: set, $inc: { version: 1 } },

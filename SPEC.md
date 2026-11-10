@@ -191,7 +191,7 @@ Move Automate in:
 Checks:
 
 - `npm run dev`, open `:5173`: Home lists Automate and nothing else. `_template` is not listed, but `/games/_template/` loads.
-- Automate plays a full local game in the iframe: draft both sides, both press DONE, Stockfish moves appear, the game reaches a result.
+- Automate plays a full local game in the iframe: draft both sides until neither has a legal placement, Stockfish moves appear, the game reaches a result.
 - `npm run build && npm start` behaves the same on `:3000`.
 - `/games/nope/x.js` and `/api/nope` return 404.
 - The three Automate test files still pass with `node`.
@@ -212,7 +212,7 @@ Checks:
 
 Add the Match model, the match routes, the lobby, and online play in Automate.
 
-Automate's changes are confined to `games/automate/app.js` and `index.html` (add the SDK script tag before the other scripts). At startup call `Arcade.ready()`:
+Automate uses the SDK and the server validates its match updates with the shared draft and chess rules. At startup call `Arcade.ready()`:
 
 - `match` is `null` → behave exactly as today (two people at one screen). Do not submit anything.
 - `match` is set → online mode, as follows.
@@ -220,12 +220,12 @@ Automate's changes are confined to `games/automate/app.js` and `index.html` (add
 Online mode:
 
 - `players[0]` is White, `players[1]` is Black. `you` says which this browser is (`null` = spectator: render only, all controls disabled).
-- **Shared state** is `{ phase: 'draft' | 'battle', draft: { armies, turn, done }, runner: 0|1|null, moves: [uci strings] }`. Never send `draft.history` (it is large); when loading a draft from the match, set `history: []`.
-- **Initial state.** `state` is `null` until the first write. Treat `null` as `{ phase: 'draft', draft: <fresh A.create() without history>, runner: null, moves: [] }`.
+- **Shared state** is `{ phase: 'draft' | 'battle', draft: { armies, turn, done }, runner: 0|1|null, moves: [uci strings] }`. For Automate, `done` means there is no legal placement for that side. The server tags updated draft states with `placementOnly: true`.
+- **Initial state.** `state` is `null` until the first write. Treat `null` as `{ phase: 'draft', draft: <fresh A.create()>, runner: null, moves: [] }`.
 - **Rendering** always comes from the latest match. Subscribe with `Arcade.match.onChange` and re-render. While `status` is `waiting`, show "WAITING FOR OPPONENT" in the message line and disable the board.
-- **Drafting.** The board and tools are enabled only when `status === 'active'`, `match.turn === you`, and it is this colour's turn in `draft`. On a successful `A.perform` or `A.finish`, immediately call `Arcade.match.update({ state, turn })` where `turn` is `0` if the new `draft.turn` is `'w'`, else `1`. If the update returns `ok: false`, discard the local change and render the match that came back (or the last known one), showing "Out of date — refreshed." Hide UNDO and CLEAR online.
-- **Starting the battle.** When a player's DONE completes the draft (`A.complete`), run the existing `validate` first. If it fails, show the error and send nothing. If it passes, send `{ phase: 'battle', draft, runner: you, moves: [] }` with `turn: you`.
-- **Running the battle.** Only the runner's browser starts Stockfish. After each engine move, append its UCI string (`R.key(move)`) to `moves` and send the state with `turn: you`. Updates must be sent one at a time: do not request the next engine move until the previous update has resolved. When the game ends, send the final state with `result: { winner }` — `0` if White delivered checkmate, `1` if Black did, `null` for every kind of draw. Detect the winner from the position (side to move has no legal moves and is in check → the other side won), not by parsing status text.
+- **Drafting.** Only the active player can place a piece. The kings come first and must stay out of check. Placements are permanent. After each placement, skip any side without a legal placement and submit the next draft and turn. The server checks the whole transition against the shared rules.
+- **Starting the battle.** On the placement that leaves neither side a legal move in the draft, the client sends `{ phase: 'battle', draft, runner: you, moves: [] }` with `turn: you`. The server validates that placement and starts the battle atomically.
+- **Running the battle.** Only the runner's browser starts Stockfish. After each engine move, append its UCI string (`R.key(move)`) to `moves` and send the state with `turn: you`. Updates must be sent one at a time: do not request the next engine move until the previous update has resolved. When the game ends, send the final state with `result: { winner }` — `0` if White delivered checkmate, `1` if Black did, `null` for every kind of draw. The server accepts one legal move at a time from the runner and computes the result from the position. It also closes a battle immediately if the agreed starting position is a draw.
 - **Watching the battle.** The non-runner and spectators never start the engine. On every change, rebuild the game by replaying `moves` from `A.fen(draft)` with `R.fromUci` / `R.apply` / `R.san`, then render. Hide PAUSE, STEP, TIME, REMATCH and NEW; show the runner's name ("ann's browser is running the engine").
 - **Runner reload.** If this browser is the runner and loads a `battle` state that is not finished, replay `moves` and carry on from there. The runner keeps PAUSE, STEP and TIME; REMATCH and NEW are hidden for everyone online.
 - A finished match (`status: 'done'`) is replayable read-only by anyone with the link.
@@ -233,8 +233,8 @@ Online mode:
 Checks (use two browser profiles, two accounts):
 
 - Ann creates a match and sees the waiting line with the link. Bob opens the link, joins; both see an empty board and it is White's turn only in Ann's browser.
-- Pieces placed by one appear for the other within about two seconds. Neither can act out of turn. After one presses DONE, the other keeps placing until they press DONE.
-- The battle plays in the finishing player's browser and the other watches the same moves appear. Both end on the same final position and result.
+- Pieces placed by one appear for the other within about two seconds. Neither can act out of turn. Place kings first and verify that placements stay put, blocked players are skipped, and the last placement automatically starts the battle.
+- The battle plays in the browser that made the final placement and the other watches the same moves appear. Both end on the same final position and result.
 - Reload the runner mid-battle: it resumes. Reload the watcher: it catches up.
 - The Automate leaderboard shows the winner with 1 win. A drawn match adds nothing.
 - With `curl`: a `PUT` with a stale `version` gets `409` and the current match; a `PUT` from the player whose turn it is not gets `409`; a `PUT` from a third account gets `403`.
@@ -246,7 +246,7 @@ Write `README.md`: prerequisites (Node 20+, a MongoDB URI — local `mongod` or 
 
 ## Known limits (accepted, do not fix)
 
-- Scores and match results are whatever the browser reports; a determined player can fake them. Acceptable for a class project among people who know each other.
+- Scores and results for other games rely on browser reports. Automate validates legal draft transitions, legal battle moves, and results, but the runner's browser still supplies the moves, so their Stockfish origin is unverified.
 - Games share the site's origin, so a game could call the API directly. They are asked not to in `GAMES.md`.
 - Match updates arrive by polling every 1.5 seconds. No real-time transport.
 - If the runner of an Automate battle closes their browser, the battle pauses until they return.

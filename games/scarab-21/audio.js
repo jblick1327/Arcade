@@ -9,46 +9,50 @@
     end: ['end', 0.50],
   };
   const buffers = new Map();
-  let context, master, enabled = false, level = 0.7;
+  const level = 0.7 * 0.85;
+  const context = createContext();
+  const master = context?.createGain();
+  let muted = false;
 
-  function setEnabled(on) {
-    enabled = on;
-    if (on && !context && Audio) {
-      try {
-        context = new Audio();
-      } catch {
-        return;
-      }
-      master = context.createGain();
-      master.gain.value = 0;
-      master.connect(context.destination);
-      for (const [cue, [file]] of Object.entries(cues)) {
-        fetch(`sounds/${file}.wav`)
-          .then(response => {
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            return response.arrayBuffer();
-          })
-          .then(bytes => context.decodeAudioData(bytes))
-          .then(buffer => buffers.set(cue, buffer))
-          .catch(error => console.warn(`[Scarab 21 audio] ${file} unavailable`, error));
-      }
+  function createContext() {
+    try {
+      return Audio && new Audio();
+    } catch {
+      return null;
     }
-    if (!context) return;
-    if (on && context.state !== 'running') context.resume().catch(() => {});
-    master.gain.setTargetAtTime(on ? level * 0.85 : 0, context.currentTime, 0.012);
   }
 
-  function setVolume(value) {
-    level = Math.min(1, Math.max(0, Number(value) / 100 || 0));
-    if (enabled && context) master.gain.setTargetAtTime(level * 0.85, context.currentTime, 0.012);
+  if (master) {
+    master.gain.value = level;
+    master.connect(context.destination);
+    for (const [cue, [file]] of Object.entries(cues)) {
+      fetch(`sounds/${file}.wav`)
+        .then(response => {
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return response.arrayBuffer();
+        })
+        .then(bytes => context.decodeAudioData(bytes))
+        .then(buffer => buffers.set(cue, buffer))
+        .catch(error => console.warn(`[Scarab 21 audio] ${file} unavailable`, error));
+    }
+    document.addEventListener('click', resume, true);
+    document.addEventListener('keydown', resume, true);
+  }
+
+  function resume() {
+    if (!muted && context && context.state !== 'running') context.resume().catch(() => {});
+  }
+
+  function toggleMute() {
+    muted = !muted;
+    if (master) master.gain.setTargetAtTime(muted ? 0 : level, context.currentTime, 0.012);
+    resume();
+    return muted;
   }
 
   function play(cue) {
-    if (!enabled || !context) return;
-    if (context.state !== 'running') {
-      context.resume().catch(() => {});
-      return;
-    }
+    if (muted || !context) return;
+    if (context.state !== 'running' && !window.navigator?.userActivation?.isActive) return;
     const buffer = buffers.get(cue);
     if (!buffer) return;
 
@@ -63,5 +67,5 @@
     source.start(context.currentTime);
   }
 
-  window.ScarabAudio = { setEnabled, setVolume, play };
+  window.ScarabAudio = { toggleMute, play };
 })();

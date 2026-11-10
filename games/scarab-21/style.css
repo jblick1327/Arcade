@@ -17,8 +17,7 @@
 #guide dd { margin: 0; font-weight: bold; }
 #guide .keyboard { color: #404040; margin-top: 6px; }
 kbd { background: #eeeae2; padding: 0 3px; border: 1px solid #99948b; font: inherit; }
-.sound-setting { display: flex; align-items: center; gap: 5px; }
-.sound-setting input { margin: 0; }
+#sound { margin-top: 8px; }
 
 #board {
   --card-width: 65px;
@@ -143,8 +142,3 @@ kbd { background: #eeeae2; padding: 0 3px; border: 1px solid #99948b; font: inhe
   #columns { gap: 3px; }
   .card-corner { font-size: 11px; }
 }
-
-.audio-settings { margin-top: 7px; }
-.volume-setting { display: flex; align-items: center; gap: 5px; margin-top: 7px; }
-#sfxVolume { width: 80px; min-width: 0; }
-#sfxValue { min-width: 3em; text-align: right; }
