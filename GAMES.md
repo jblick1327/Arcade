@@ -54,7 +54,13 @@ Nothing in the SDK ever throws. If something goes wrong you get `{ ok: false, re
 
 Run the site (`npm run dev`), open it, and your game appears in the list. Play it logged in and check that your score shows on the leaderboard.
 
-You can also open your `index.html` without the site. The SDK notices, switches to offline mode, and prints scores to the browser console instead of saving them. (For that to work on its own, the `/sdk/arcade.js` line has to load; the simplest way is to run the site. If it fails to load, guard your calls with `window.Arcade && Arcade.submitScore(n)`.)
+You don't need the full site (or MongoDB) while you're building. Start any static file server in the repo root, for example:
+
+```sh
+python3 -m http.server
+```
+
+and open `http://localhost:8000/games/<your-game>/`. The SDK notices it isn't running inside the site, switches to offline mode, and prints scores to the browser console instead of saving them. Double-clicking `index.html` does *not* work, because `/sdk/arcade.js` is a root-relative path that only resolves when a server is serving the repo root.
 
 ## Rules
 
@@ -62,6 +68,29 @@ You can also open your `index.html` without the site. The SDK notices, switches 
 - Do not call `/api/...` yourself and do not use `localStorage` for scores. Use the SDK.
 - Your game owns everything inside its frame, including its look. Nothing outside the frame is yours to style.
 
+## Getting your game into the repo
+
+All changes reach `master` through a pull request.
+
+1. Fork the repo (or create a branch if you have write access) and make a branch for your game, e.g. `add-space-rocks`.
+2. Add your folder `games/<your-game>/` as described above. Keep your changes inside it, so your PR can't conflict with anyone else's game.
+3. Run the site, or use the static server from section 4, and play it through once.
+4. Run `npm test` and `npm run build` from the repo root. Both must pass; CI runs them again on your PR.
+5. Open a pull request into `master`. In the description, say what the game is and how to play it. A screenshot helps.
+6. The maintainer will review it, may ask for changes, and merges it once CI is green.
+
+If you add tests for your game, put them in `games/<your-game>/tests/*.cjs` and `npm test` will pick them up.
+
 ## Two-player games
 
-Set `"mode": "match"` in `game.json` and read the "Matches" section of `SPEC.md`. `games/automate/` is the worked example.
+Set `"mode": "match"` in `game.json`. `games/automate/` is the worked example; the full API is in the "Matches" section of `ARCHITECTURE.md`. The short version:
+
+- A **match** is a shared piece of data: whose turn it is, a `state` object that you define (up to 64,000 characters of JSON), a version number, and who won. The site keeps it in the database and handles creating, listing and joining matches, so you only write the game.
+- Get the current match with `const { match } = await Arcade.ready()` or `Arcade.match.get()`. `match.you` is your seat, `0` or `1`, or `null` if you're only watching, and `match.turn` is whose move it is.
+- On your turn, save your move with `await Arcade.match.update({ state, turn: nextSeat })`. To end the game, add `result: { winner: 0 }` (or `1`, or `null` for a draw).
+- Redraw your board when `Arcade.match.onChange(fn)` fires. It runs whenever the other player moves; the site checks for changes every second or two.
+- If both players act at once, the second write is rejected with `{ ok: false, reason: 'conflict' }` and the current match attached. Use that match and carry on.
+
+The server doesn't know your game's rules: it checks that it's the sender's turn and the version matches, and nothing else. A determined player could cheat by sending the server a move your game would never allow. That's fine for a casual game. Automate is the exception, with its own checks in `server/automate.js`, because it's a competitive game. If you want that, talk to the maintainer first.
+
+To try a match you need the full site running (see the README) and two browsers or one normal and one private window, each logged in as a different user.
