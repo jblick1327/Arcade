@@ -14,8 +14,10 @@
   const board = document.getElementById('board');
   const columns = document.getElementById('columns');
   const soundToggle = document.getElementById('sound');
+  const volume = document.getElementById('sfxVolume');
+  const volumeLabel = document.getElementById('sfxValue');
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-  let game, soundPlayer;
+  let game;
   let resolving = false;
 
   function element(tag, className, text) {
@@ -42,11 +44,8 @@
     return node;
   }
 
-  function sound(cue) {
-    if (!soundToggle.checked) return;
-    soundPlayer ??= new Audio();
-    soundPlayer.src = `sounds/${cue}.wav`;
-    soundPlayer.play().catch(() => {});
+  function sound(cue, details) {
+    if (soundToggle.checked) window.ScarabAudio?.play(cue, details);
   }
 
   const lanes = Array.from({ length: 5 }, (_, index) => {
@@ -117,7 +116,12 @@
     const messages = awards.map(([label, points]) => `${label} +${points}`);
     const cleared = game.columns[index].length === 0;
     const wholeBoard = cleared && hadOtherCards && game.columns.every((pile) => pile.length === 0);
-    sound(wholeBoard ? 'board-clear' : cleared ? 'column-clear' : 'place');
+    const mainAward = awards.find(([label]) => label !== 'Deck Clear')?.[0] || '';
+    sound(wholeBoard ? 'board-clear' : cleared ? 'column-clear' : 'place', {
+      award: mainAward,
+      deckClear: awards.some(([label]) => label === 'Deck Clear'),
+      gameOver: game.over,
+    });
     if (cleared && !reducedMotion.matches) {
       resolving = true;
       board.setAttribute('aria-busy', 'true');
@@ -153,8 +157,12 @@
     lanes[0].button.focus();
   });
   soundToggle.addEventListener('change', () => {
+    window.ScarabAudio?.setEnabled(soundToggle.checked);
     if (soundToggle.checked) sound('place');
-    else soundPlayer?.pause();
+  });
+  volume.addEventListener('input', () => {
+    volumeLabel.textContent = volume.value + '%';
+    window.ScarabAudio?.setVolume(volume.value);
   });
 
   document.addEventListener('keydown', (event) => {
