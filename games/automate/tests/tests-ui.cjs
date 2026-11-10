@@ -13,7 +13,7 @@ class Element {
  click(){if(!this.disabled) this.listeners.click?.({target:this});}
  closest(selector){return selector==='button.sq'&&this.className.includes('sq')?this:null;}
 }
-const ids=['board','engineStatus','setupPanel','battlePanel','whitePoints','blackPoints','whiteLocked','blackLocked','turn','draftHint','doneBtn','undoBtn','clearBtn','message','pieceTools','gameStatus','playBtn','stepBtn','moves','thinkMs','skillLevel','sound','rematchBtn','newBtn'];
+const ids=['board','engineStatus','setupPanel','battlePanel','whitePoints','blackPoints','whiteLocked','blackLocked','turn','draftHint','doneBtn','undoBtn','clearBtn','message','pieceTools','gameStatus','playBtn','stepBtn','moves','thinkMs','skillLevel','sound','sfxVolume','sfxValue','rematchBtn','newBtn'];
 const elements=Object.fromEntries(ids.map(id=>[id,new Element()]));
 elements.skillLevel.value='7';
 const document={getElementById:id=>{assert.ok(elements[id],id);return elements[id];},createElement:tag=>new Element(tag)};
