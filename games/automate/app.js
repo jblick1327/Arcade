@@ -6,7 +6,7 @@ const ICON={w:{P:'♙',N:'♘',B:'♗',R:'♖',Q:'♕',K:'♔'},b:{P:'♟︎',N:
 const PIECE={P:'Pawn',N:'Knight',B:'Bishop',R:'Rook',Q:'Queen',K:'King',X:'Erase'};
 let draft=A.create(),phase='draft',brush='P';
 let game=null,worker=null,ready=false,searching=false,discard=false,timeout=null,engineId=0;
-let engineSkill,soundPlayer,soundContext;
+let engineSkill;
 const colorOf=p=>p===p.toUpperCase()?'w':'b';
 // Online (Arcade match) state. Everything below is inert when no match is attached.
 let online=false,match=null,you=null,busy=false,engineStarted=false;
@@ -16,33 +16,8 @@ function amRunner(){return online&&phase==='battle'&&match&&match.state&&you!==n
 function sharedDraft(d){return {armies:d.armies,turn:d.turn,done:d.done};}
 function info(text,error=false){$('message').textContent=text;$('message').classList.toggle('error',error);}
 function engineInfo(text){$('engineStatus').textContent=text;}
-function checkmateChime(){
- const Context=window.AudioContext||window.webkitAudioContext;
- if(!Context)return;
- soundContext??=new Context();
- if(soundContext.state==='suspended')soundContext.resume().catch(()=>{});
- const start=soundContext.currentTime+.02;
- // A brief three-note desktop chime, distinct from ordinary moves and captures.
- for(const [frequency,offset,duration] of [[523.25,0,.14],[659.25,.14,.14],[783.99,.28,.42]]){
-  const oscillator=soundContext.createOscillator(),volume=soundContext.createGain();
-  oscillator.type='triangle';
-  oscillator.frequency.value=frequency;
-  volume.gain.setValueAtTime(.0001,start+offset);
-  volume.gain.exponentialRampToValueAtTime(.07,start+offset+.018);
-  volume.gain.exponentialRampToValueAtTime(.0001,start+offset+duration);
-  oscillator.connect(volume);
-  volume.connect(soundContext.destination);
-  oscillator.start(start+offset);
-  oscillator.stop(start+offset+duration+.02);
- }
-}
-function sound(cue){
- if(!$('sound').checked)return;
- if(cue==='checkmate'){checkmateChime();return;}
- soundPlayer??=new Audio();
- soundPlayer.volume=cue==='capture'?.5:.14;
- soundPlayer.src='sounds/'+cue+'.wav';
- soundPlayer.play().catch(()=>{});
+function sound(cue,options){
+ if($('sound').checked)window.AutomateAudio?.play(cue,options);
 }
 function setStatus(id,text){
  const node=$(id);
@@ -138,7 +113,8 @@ function useResult(result){if(result.error){info(result.error,true);return false
 $('board').addEventListener('click',e=>{
  const button=e.target.closest('button.sq');
  if(!button||phase!=='draft'||!canAct())return;
- if(useResult(A.perform(draft,brush,Number(button.dataset.index))))sound('piece');
+ const chosenBrush=brush;
+ if(useResult(A.perform(draft,brush,Number(button.dataset.index))))sound(chosenBrush==='X'?'erase':'draft');
 });
 function validate(s){let state;try{state=R.parseFen(A.fen(s));}catch(e){return {error:e.message};}
  if(R.checked(state,1)||R.checked(state,-1))return {error:'Both kings must start out of check. Adjust your draft to continue.'};
@@ -152,9 +128,10 @@ $('doneBtn').addEventListener('click',()=>{
  if(A.complete(result.state)){
   const check=validate(result.state);
   if(check.error){info(check.error,true);return;}
+  sound('lock');
   if(online){submitBattle(result.state);return;}
   draft=result.state;startBattle(check.state);
- }else useResult(result);
+ }else if(useResult(result))sound('lock');
 });
 $('undoBtn').addEventListener('click',()=>useResult(A.undo(draft)));
 $('clearBtn').addEventListener('click',()=>{draft=A.create();brush='P';info('');render();});
@@ -227,15 +204,17 @@ function recordMove(g,before,move,uci){
  const capture=flag==='ep'||before.b[to]!=='.';
  g.uci.push(uci);
  g.moves.push(R.san(before,move));
- g.last={from:R.sq(from),to:R.sq(to),target,capture};
+ g.last={from:R.sq(from),to:R.sq(to),target,capture,castle:flag==='castle',promotion:Boolean(move[2])};
  g.history.push(R.apply(before,move));
 }
 function moveFeedback(){
- const {capture,target}=game.last;
+ if(!game?.last)return;
+ const {capture,target,castle,promotion}=game.last;
  if(capture)$('board').children[target].classList.add('capture');
- const state=game.history.at(-1);
- const checkmate=game.finished&&!R.legal(state).length&&R.checked(state);
- sound(checkmate?'checkmate':capture?'capture':'piece');
+ const state=game.history.at(-1),checked=R.checked(state);
+ const checkmate=game.finished&&checked&&!R.legal(state).length;
+ const cue=checkmate?'checkmate':game.finished?'draw':promotion?'promotion':checked?'check':castle?'castle':capture?'capture':'move';
+ sound(cue,{capture});
 }
 function bestMove(best){if(!searching)return;searching=false;
  if(discard){discard=false;requestMove();return;}
@@ -260,18 +239,12 @@ $('stepBtn').addEventListener('click',()=>{
 });
 $('thinkMs').addEventListener('change',e=>{if(game)game.thinkMs=Number(e.target.value);});
 $('sound').addEventListener('change',()=>{
- if($('sound').checked){
-  // Unlock Web Audio from a user gesture so the checkmate cue works later.
-  const Context=window.AudioContext||window.webkitAudioContext;
-  if(Context){
-   soundContext??=new Context();
-   if(soundContext.state==='suspended')soundContext.resume().catch(()=>{});
-  }
-  sound('piece');
- }else{
-  soundPlayer?.pause();
-  soundContext?.suspend().catch(()=>{});
- }
+ window.AutomateAudio?.setEnabled($('sound').checked);
+ if($('sound').checked)sound('draft');
+});
+$('sfxVolume').addEventListener('input',e=>{
+ $('sfxValue').textContent=e.target.value+'%';
+ window.AutomateAudio?.setVolume(e.target.value);
 });
 $('rematchBtn').addEventListener('click',()=>{killEngine();const check=validate(draft);if(check.error){engineInfo(check.error);return;}startBattle(check.state);});
 $('newBtn').addEventListener('click',()=>{killEngine();phase='draft';draft=A.create();game=null;brush='P';engineInfo('');info('');render();});
