@@ -1,17 +1,22 @@
 (function () {
   'use strict';
 
-  const { canPlay, newGame, play, total } = window.Scarab21;
+  const { newGame, play, preview, total } = window.Scarab21;
   const symbols = { spades: '♠', hearts: '♥', clubs: '♣', diamonds: '♦' };
   const faces = { A: 'Ace', J: 'Jack', Q: 'Queen', K: 'King' };
   const score = document.getElementById('score');
   const remaining = document.getElementById('remaining');
   const current = document.getElementById('current');
   const award = document.getElementById('award');
+  const result = document.getElementById('result');
   const status = document.getElementById('status');
   const again = document.getElementById('again');
+  const board = document.getElementById('board');
   const columns = document.getElementById('columns');
+  const soundToggle = document.getElementById('sound');
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   let game;
+  let badge;
 
   function element(tag, className, text) {
     const node = document.createElement(tag);
@@ -37,31 +42,54 @@
     return node;
   }
 
+  function sound(cue) {
+    window.ScarabAudio?.play(cue);
+  }
+
   const lanes = Array.from({ length: 5 }, (_, index) => {
     const lane = element('div', 'lane');
-    const button = element('button', 'place', `▾ ${index + 1}`);
+    const button = element('button', 'place');
+    const forecast = element('span', 'preview');
     const pile = element('div', 'pile');
     const sum = element('div', 'sum');
     button.type = 'button';
     button.addEventListener('click', () => place(index));
+    button.append(element('span', 'place-key', `▾ ${index + 1}`), forecast);
     lane.append(button, pile, sum);
     columns.append(lane);
-    return { button, pile, sum };
+    return { lane, button, forecast, pile, sum };
   });
 
   function render() {
     score.textContent = game.score;
     remaining.textContent = game.deck.length;
     current.replaceChildren(cardFace(game.card));
-    for (const [index, { button, pile, sum }] of lanes.entries()) {
+    for (const [index, { button, forecast, pile, sum }] of lanes.entries()) {
       const cards = game.columns[index];
       const value = total(cards);
-      button.disabled = game.over || !canPlay(cards, game.card);
-      button.setAttribute('aria-label', `Place in column ${index + 1}, total ${value}`);
+      const { value: next, legal, clear } = preview(game, index);
+      button.disabled = game.over || !legal;
+      button.dataset.result = !legal ? 'bust' : clear || 'fits';
+      forecast.textContent = !legal ? 'Would bust' : clear === 'board' ? 'Board clears'
+        : clear === 'column' ? `${next} · clears` : `${value} → ${next}`;
+      const description = !legal ? 'would bust' : clear === 'board' ? 'would clear the board'
+        : `would total ${next}${clear === 'column' ? ' and clear' : ''}`;
+      button.setAttribute('aria-label', `Column ${index + 1}, total ${value}, ${description}`);
       pile.replaceChildren(...cards.map(cardFace));
       sum.textContent = value || '–';
     }
     again.hidden = !game.over;
+  }
+
+  function showClear(index, clear, message) {
+    badge?.remove();
+    if (reducedMotion.matches) return;
+    const wholeBoard = clear === 'board';
+    const nextBadge = element('span', wholeBoard ? 'clear-award board-award' : 'clear-award', message);
+    nextBadge.setAttribute('aria-hidden', 'true');
+    (wholeBoard ? board : lanes[index].lane).append(nextBadge);
+    nextBadge.addEventListener('animationend', () => nextBadge.remove(), { once: true });
+    badge = nextBadge;
   }
 
   async function submit(finishedGame) {
@@ -74,16 +102,20 @@
   }
 
   function place(index) {
+    const clear = preview(game, index)?.clear;
     const awards = play(game, index);
     if (!awards) return;
 
-    render();
     const messages = awards.map(([label, points]) => `${label} +${points}`);
-    if (game.over) messages.push('No moves.');
-    award.textContent = messages.join(' · ') || 'Place the draw.';
+    render();
+    award.textContent = messages.join(' · ') || (game.over ? '' : 'Choose a column for the draw.');
+    if (clear) showClear(index, clear, messages[0]);
+    sound(game.over ? 'end' : clear || 'place');
 
     if (game.over) {
-      status.textContent = 'Game over.';
+      result.textContent = `Final score ${game.score}. No column can take the ${cardName(game.card)}.`;
+      result.hidden = false;
+      status.textContent = 'Saving score…';
       again.focus();
       submit(game);
     } else {
@@ -93,15 +125,21 @@
   }
 
   function start() {
+    badge?.remove();
     game = newGame();
     render();
-    award.textContent = 'Place the draw.';
+    result.hidden = true;
+    award.textContent = 'Choose a column for the draw.';
     status.textContent = `Draw: ${cardName(game.card)}.`;
   }
 
   again.addEventListener('click', () => {
     start();
     lanes[0].button.focus();
+  });
+  soundToggle.addEventListener('click', () => {
+    const muted = window.ScarabAudio?.toggleMute();
+    soundToggle.textContent = muted ? 'Unmute sound' : 'Mute sound';
   });
 
   document.addEventListener('keydown', (event) => {

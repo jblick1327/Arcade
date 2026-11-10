@@ -1,6 +1,6 @@
 # AUTOMATE
 
-2 players, 35 points each. Place one piece each turn. Press DONE to start a Stockfish auto-battle.
+2 players, 35 points each. Place your kings first, then take turns placing one piece. Every placement is final. If one side has no legal placements, skip its turn. Stockfish starts the battle when neither side can place a piece.
 
 Stockfish 11 WASM (accepts any army): GPLv3, compiled by stockfish.js (see `engine/README.txt`). Game code: MIT.
 

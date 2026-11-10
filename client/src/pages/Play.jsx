@@ -3,11 +3,35 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { api } from '../api.js';
 import { attachBridge } from '../bridge.js';
 
-function statusLine(m) {
-  if (m.status === 'waiting') return `Waiting for an opponent. Send them this link: ${window.location.href}`;
+function inviteUrl() {
+  const url = new URL(window.location.href);
+  if (url.searchParams.has('dev')) url.searchParams.delete('dev');
+  return url.href;
+}
+
+function statusLine(m, showDev) {
+  if (m.status === 'waiting') return `Waiting for an opponent. Send them this link: ${showDev ? inviteUrl() : window.location.href}`;
   const [a, b] = m.players.map((p) => p.name);
   if (m.status === 'done') return `${a} vs ${b} — ${m.winner === null ? 'draw' : m.players[m.winner].name + ' won'}`;
   return `${a} vs ${b} — in progress`;
+}
+
+/** An active Automate match whose legacy draft the current rules cannot continue. */
+const needsRestart = (m) => m?.game === 'automate' && m.status === 'active' && !!m.state?.restartRequired;
+
+function CopyInvite() {
+  const [status, setStatus] = useState('');
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(inviteUrl());
+      setStatus('Invite copied.');
+    } catch {
+      setStatus('Copy the link shown above.');
+    }
+  }
+
+  return <p><button type="button" onClick={copy}>Copy invite link</button>{' '}<span role="status">{status}</span></p>;
 }
 
 export default function Play({ user }) {
@@ -15,11 +39,16 @@ export default function Play({ user }) {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const matchId = params.get('match');
+  const showDev = import.meta.env.DEV && params.get('dev') === '1';
+  const showAutomateDev = showDev && slug === 'automate';
 
   const [game, setGame] = useState(null); // null = loading, false = not found
   const [board, setBoard] = useState([]);
   const [match, setMatch] = useState(null);
   const [lobby, setLobby] = useState([]);
+  const [reloadCount, setReloadCount] = useState(0);
+  const [restarting, setRestarting] = useState(false);
+  const [restartError, setRestartError] = useState('');
   const iframeRef = useRef(null);
 
   useEffect(() => {
@@ -34,11 +63,14 @@ export default function Play({ user }) {
 
   useEffect(() => { loadBoard(); }, [loadBoard]);
 
+  // A restart error belongs to the view it happened in.
+  useEffect(() => { setRestartError(''); }, [slug, matchId]);
+
   useEffect(() => {
     setMatch(null);
     if (!game || !iframeRef.current) return undefined;
     return attachBridge(iframeRef.current, { slug, user, matchId, onScore: loadBoard, onMatch: setMatch });
-  }, [game, slug, user?.id, matchId, loadBoard]);
+  }, [game, slug, user?.id, matchId, loadBoard, reloadCount]);
 
   const isMatchGame = game && game.mode === 'match';
 
@@ -54,18 +86,43 @@ export default function Play({ user }) {
     return () => clearInterval(t);
   }, [isMatchGame, matchId, loadLobby, user?.id]);
 
+  function openMatch(id) {
+    const search = new URLSearchParams({ match: id });
+    if (showDev) search.set('dev', '1');
+    navigate(`?${search}`);
+  }
+
   async function newMatch() {
     const r = await api('POST', `/games/${slug}/matches`);
-    if (r.status === 201) navigate(`?match=${r.data.id}`);
+    if (r.status === 201) openMatch(r.data.id);
   }
 
   async function join(id) {
     const r = await api('POST', `/matches/${id}/join`);
     if (r.status === 200) {
       if (id === matchId) setMatch(r.data);
-      else navigate(`?match=${id}`);
+      else openMatch(id);
     } else {
       loadLobby();
+    }
+  }
+
+  async function restartDraft(m) {
+    if (!window.confirm('Restart this incompatible Automate draft for both players? All placed pieces will be cleared.')) return;
+    setRestartError('');
+    setRestarting(true);
+    const r = await api('POST', `/matches/${m.id}/restart-draft`, { version: m.version });
+    setRestarting(false);
+    if (r.status === 200) {
+      if (matchId === m.id) setMatch(r.data);
+      else loadLobby();
+    } else {
+      if (r.data?.match && matchId === m.id) setMatch(r.data.match);
+      if (!matchId) loadLobby();
+      // If the other player already restarted it, the refreshed match is the success case.
+      if (!(r.data?.match && !needsRestart(r.data.match))) {
+        setRestartError(r.data?.error || 'Could not restart the draft. Please try again.');
+      }
     }
   }
 
@@ -77,6 +134,7 @@ export default function Play({ user }) {
   return (
     <main>
       <h1>{game.title}</h1>
+      {restartError && <p role="alert">{restartError}</p>}
 
       {isMatchGame && !matchId && (
         <section>
@@ -86,8 +144,11 @@ export default function Play({ user }) {
             {lobby.map((m) => (
               <li key={m.id}>
                 {m.players[0].name}{' '}
+                {needsRestart(m) && <span>Draft needs restart. </span>}
                 {user && (m.you !== null
-                  ? <button type="button" onClick={() => navigate(`?match=${m.id}`)}>Resume</button>
+                  ? needsRestart(m)
+                    ? <button type="button" disabled={restarting} onClick={() => restartDraft(m)}>Restart draft</button>
+                    : <button type="button" onClick={() => openMatch(m.id)}>Resume</button>
                   : <button type="button" onClick={() => join(m.id)}>Join</button>)}
               </li>
             ))}
@@ -97,17 +158,27 @@ export default function Play({ user }) {
 
       {isMatchGame && matchId && (
         <section>
-          <p>{match ? statusLine(match) : 'Loading match…'}</p>
+          <p>{match ? statusLine(match, showAutomateDev) : 'Loading match…'}</p>
+          {needsRestart(match) && (
+            <p>This saved draft cannot continue under the new placement rules.{' '}
+              {inMatch
+                ? <button type="button" disabled={restarting} onClick={() => restartDraft(match)}>Restart draft for both players</button>
+                : 'Either player can restart the draft.'}
+            </p>
+          )}
+          {showAutomateDev && inMatch && match.status === 'waiting' && <CopyInvite key={matchId} />}
           {user && match && !inMatch && match.status === 'waiting' && (
             <p><button type="button" onClick={() => join(matchId)}>Join this match</button></p>
           )}
-          <p><Link to={`/play/${slug}`}>Leave</Link></p>
+          <p><Link to={`/play/${slug}${showDev ? '?dev=1' : ''}`}>Leave</Link></p>
         </section>
       )}
 
+      {showDev && <p><button type="button" onClick={() => setReloadCount((n) => n + 1)}>Reload game iframe</button></p>}
+
       <iframe
         ref={iframeRef}
-        key={slug + ':' + (matchId || 'local')}
+        key={slug + ':' + (matchId || 'local') + ':' + reloadCount}
         src={`/games/${slug}/`}
         width={game.width}
         height={game.height}

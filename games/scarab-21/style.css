@@ -1,8 +1,11 @@
 #page { max-width: 840px; margin: 24px auto; }
+.scarab-icon { width: 17px; height: 17px; color: #f4d080; }
 #layout { display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 12px; }
 #table, #guide { margin-bottom: 0; }
 #guide { align-self: start; }
 #guide p { margin: 0; line-height: 1.5; }
+#guide details { margin: 10px 0; }
+#guide summary { cursor: pointer; font-weight: bold; margin-bottom: 5px; }
 #guide dl { margin: 10px 0; }
 #guide dl div {
   display: flex;
@@ -12,17 +15,19 @@
   padding: 6px 0;
 }
 #guide dd { margin: 0; font-weight: bold; }
-.keyboard { color: #404040; }
+#guide .keyboard { color: #404040; margin-top: 6px; }
 kbd { background: #eeeae2; padding: 0 3px; border: 1px solid #99948b; font: inherit; }
+#sound { margin-top: 8px; }
 
 #board {
   --card-width: 65px;
   --card-height: 90px;
   --fan-step: 23px;
   display: grid;
-  grid-template-columns: 82px minmax(0, 1fr);
+  position: relative;
+  grid-template-columns: 94px minmax(0, 1fr);
   padding: 8px;
-  background: #789679;
+  background: radial-gradient(ellipse at top, #386b53, #1a4036);
   border: 2px solid;
   border-color: #808080 #fff #fff #808080;
   box-shadow: inset 1px 1px #404040;
@@ -33,24 +38,30 @@ kbd { background: #eeeae2; padding: 0 3px; border: 1px solid #99948b; font: inhe
   align-items: center;
   margin-right: 8px;
   padding: 6px 4px;
-  color: #fff;
-  background: #325d53;
-  border: 1px solid #284a42;
+  color: #ffdf98;
+  background: #19392f;
+  border: 1px solid #b79450;
 }
-.draw-label { display: block; margin: 5px 0 10px; font-weight: bold; }
+.draw-label { display: block; margin: 5px 0 10px; text-align: center; font-weight: bold; font-size: 11px; }
 #current { width: 100%; display: grid; place-items: center; }
+#current .card { box-shadow: 0 0 0 1px #b79450, 2px 3px 3px #0008; }
 #columns { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; }
 .lane {
   min-width: 0;
   display: grid;
+  position: relative;
   grid-template-rows: auto 1fr auto;
   padding: 3px;
   background: #eeead9;
   border: 1px solid #526e55;
 }
 .lane:nth-child(even) { background: #c3d1b9; }
-.place { width: 100%; white-space: nowrap; padding-inline: 2px; }
+.place { display: grid; gap: 2px; width: 100%; min-height: 40px; padding-inline: 2px; }
 .place:active:not(:disabled) { padding-inline: 3px 1px; }
+.place-key { font-weight: bold; }
+.preview { font: 10px/1.2 Tahoma, Arial, sans-serif; }
+.place[data-result="column"], .place[data-result="board"] { background: #f6e3a8; }
+.place[data-result="bust"] { color: #674034; text-shadow: none; background: #e7ded3; }
 .pile {
   min-height: calc(var(--card-height) + 3 * var(--fan-step) + 14px);
   display: flex;
@@ -70,7 +81,7 @@ kbd { background: #eeeae2; padding: 0 3px; border: 1px solid #99948b; font: inhe
   width: min(100%, var(--card-width));
   height: var(--card-height);
   flex: 0 0 auto;
-  background: #fffefa;
+  background: #fff8e6;
   color: #131b22;
   border: 1px solid #333;
   border-radius: 3px;
@@ -83,8 +94,29 @@ kbd { background: #eeeae2; padding: 0 3px; border: 1px solid #99948b; font: inhe
 .card-corner { padding: 2px 3px 0; font: bold 13px Tahoma, Arial, sans-serif; }
 .card-suit { place-self: center; font-size: clamp(23px, 5vw, 37px); line-height: 1; }
 
+.clear-award {
+  position: absolute;
+  top: 48%;
+  left: 3px;
+  right: 3px;
+  z-index: 1;
+  padding: 5px 2px;
+  border: 1px solid #f6d689;
+  background: #244338;
+  color: #ffebaf;
+  box-shadow: 1px 2px #142b23;
+  text-align: center;
+  font-weight: bold;
+  pointer-events: none;
+  animation: clear-award 480ms ease-out both;
+}
+@keyframes clear-award { 0% { opacity: 0; } 15%, 65% { opacity: 1; } 100% { opacity: 0; transform: translateY(-6px); } }
+.board-award { left: 22%; right: 10%; background: #f6d689; color: #233c2d; font-size: 17px; }
 #move-bar { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-height: 33px; padding-top: 5px; }
-#award { color: #0a246a; font-weight: bold; }
+#award, #result { margin: 0; line-height: 1.4; }
+#award { color: #1b4c3b; font-weight: bold; }
+#award:empty { display: none; }
+#result { font-weight: bold; }
 #again { flex-shrink: 0; }
 
 @media (max-width: 740px) {

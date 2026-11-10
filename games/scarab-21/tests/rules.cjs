@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const { total, canPlay, newGame, play } = require('../rules.js');
+const { total, canPlay, newGame, play, preview } = require('../rules.js');
 
 const card = (rank, suit = 'clubs') => ({ rank, suit });
 const pile = (...ranks) => ranks.map((rank, i) => card(rank, ['clubs', 'diamonds', 'hearts', 'spades'][i % 4]));
@@ -38,6 +38,7 @@ for (const [cards, label, points] of clears) {
   test(`${label} clears the column for ${points}`, () => {
     const game = deal([...cards, card('2')]);
     for (let i = 1; i < cards.length; i++) assert.deepEqual(play(game, 0), []);
+    assert.equal(preview(game, 0).clear, 'column');
     assert.deepEqual(play(game, 0), [[label, points]]);
     assert.equal(game.score, points);
     assert.equal(game.columns[0].length, 0);
@@ -71,6 +72,9 @@ test('Double Blackjack requires consecutive suited spade and heart queen clears'
 test('Straight clears all columns in any order', () => {
   const columns = [pile('10', '9'), pile('9', '7'), pile('10', 'K'), pile('8', '9'), pile('10')];
   const game = deal(pile('8', '2'), columns);
+  const before = structuredClone(game);
+  assert.equal(preview(game, 4).clear, 'board');
+  assert.deepEqual(game, before, 'A preview does not place the card');
   assert.deepEqual(play(game, 4), [['Straight', 100]]);
   assert.ok(game.columns.every((column) => !column.length));
   assert.equal(game.discard.length, 10);
