@@ -13,12 +13,15 @@ class Element {
  click(){if(!this.disabled) this.listeners.click?.({target:this});}
  closest(selector){return selector==='button.sq'&&this.className.includes('sq')?this:null;}
 }
-const ids=['board','engineStatus','setupPanel','battlePanel','whitePoints','blackPoints','turn','doneBtn','undoBtn','clearBtn','message','pieceTools','gameStatus','playBtn','stepBtn','moves','thinkMs','rematchBtn','newBtn'];
+const ids=['board','engineStatus','setupPanel','battlePanel','whitePoints','blackPoints','whiteLocked','blackLocked','turn','draftHint','doneBtn','undoBtn','clearBtn','message','pieceTools','gameStatus','playBtn','stepBtn','moves','thinkMs','moveDelay','skillLevel','sound','rematchBtn','newBtn'];
 const elements=Object.fromEntries(ids.map(id=>[id,new Element()]));
+elements.skillLevel.value='7';
 const document={getElementById:id=>{assert.ok(elements[id],id);return elements[id];},createElement:tag=>new Element(tag)};
+const commands=[];
 class FakeWorker{
  constructor(path){assert.equal(path,'./engine/stockfish.js');this.fen='';this.terminated=false;}
  postMessage(cmd){
+  commands.push(cmd);
   if(cmd==='uci')queueMicrotask(()=>this.onmessage?.({data:'uciok'}));
   if(cmd==='isready')queueMicrotask(()=>this.onmessage?.({data:'readyok'}));
   if(cmd.startsWith('position fen '))this.fen=cmd.slice(13);
@@ -36,23 +39,33 @@ const context={window,document,console,location:{protocol:'http:'},Worker:FakeWo
 vm.runInNewContext(fs.readFileSync(__dirname+'/../app.js','utf8'),context);
 assert.equal(elements.board.children.length,64);
 assert.ok(elements.board.children.every(b=>!b.children.some(x=>x.className?.includes('piece'))),'Initially empty');
-assert.equal(elements.turn.textContent,'WHITE');
-assert.equal(elements.whitePoints.textContent,'0/35');
+assert.equal(elements.turn.textContent,'White is drafting');
+assert.equal(elements.whitePoints.textContent,'35 points left');
+assert.equal(elements.whiteLocked.hidden,true);
+assert.match(elements.draftHint.textContent,/king/);
 assert.equal(elements.message.textContent,'');
-const choose=p=>{
- const btn=elements.pieceTools.children.find(el=>el.title.startsWith(p+' ('));assert.ok(btn,p);btn.click();};
+const choose=name=>{
+ const btn=elements.pieceTools.children.find(el=>el.children[1].textContent.startsWith(name));assert.ok(btn,name);btn.click();};
 const pick=i=>{const square=elements.board.children[i];elements.board.listeners.click({target:square});};
-choose('K');pick(60);assert.equal(elements.turn.textContent,'BLACK');
-choose('K');pick(4);assert.equal(elements.turn.textContent,'WHITE');
-choose('Q');pick(51);assert.equal(elements.turn.textContent,'BLACK');
-choose('R');pick(8);assert.equal(elements.turn.textContent,'WHITE');
-assert.equal(elements.whitePoints.textContent,'9/35');assert.equal(elements.blackPoints.textContent,'5/35');
-elements.doneBtn.click();assert.equal(elements.turn.textContent,'BLACK');
+const highlighted=()=>elements.board.children.filter(square=>square.className.includes('deploy'));
+assert.equal(highlighted().length,16,'Only the pawn’s two legal ranks are outlined');
+choose('King');assert.equal(highlighted().length,24,'Changing the piece refreshes the outlines');
+pick(60);assert.equal(elements.turn.textContent,'Black is drafting');
+choose('King');pick(4);assert.equal(elements.turn.textContent,'White is drafting');
+choose('King');assert.equal(highlighted().length,0,'A second king has no legal squares');
+choose('Erase');assert.deepEqual(highlighted().map(square=>square.dataset.index),[60]);
+choose('Queen');pick(51);assert.equal(elements.turn.textContent,'Black is drafting');
+choose('Rook');pick(8);assert.equal(elements.turn.textContent,'White is drafting');
+assert.equal(elements.whitePoints.textContent,'26 points left');assert.equal(elements.blackPoints.textContent,'30 points left');
+elements.doneBtn.click();assert.equal(elements.turn.textContent,'Black is drafting');
+assert.equal(elements.whiteLocked.hidden,false);
 elements.doneBtn.click();assert.equal(elements.setupPanel.hidden,true);assert.equal(elements.battlePanel.hidden,false);
 assert.equal(elements.board.children.length,64);
 setImmediate(()=>{
  assert.equal(elements.gameStatus.textContent==='ENGINE ERROR',false,'Mock UCI initialized');
  assert.ok(elements.moves.children.length>0,'Mock engine made its first legal move');
+ assert.ok(commands.includes('setoption name Skill Level value 7'));
+ assert.ok(commands.includes('go movetime 600'));
  assert.match(elements.engineStatus.textContent,/STOCKFISH 11/);
  console.log('Browser UCI simulated: board starts empty, alternating draft, engine initializes and plays legal move.');
 });

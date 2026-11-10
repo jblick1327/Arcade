@@ -3,11 +3,32 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { api } from '../api.js';
 import { attachBridge } from '../bridge.js';
 
+function inviteUrl() {
+  const url = new URL(window.location.href);
+  if (url.searchParams.has('dev')) url.searchParams.delete('dev');
+  return url.href;
+}
+
 function statusLine(m) {
-  if (m.status === 'waiting') return `Waiting for an opponent. Send them this link: ${window.location.href}`;
+  if (m.status === 'waiting') return `Waiting for an opponent. Send them this link: ${inviteUrl()}`;
   const [a, b] = m.players.map((p) => p.name);
   if (m.status === 'done') return `${a} vs ${b} — ${m.winner === null ? 'draw' : m.players[m.winner].name + ' won'}`;
   return `${a} vs ${b} — in progress`;
+}
+
+function CopyInvite() {
+  const [status, setStatus] = useState('');
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(inviteUrl());
+      setStatus('Invite copied.');
+    } catch {
+      setStatus('Copy the link shown above.');
+    }
+  }
+
+  return <p><button type="button" onClick={copy}>Copy invite link</button>{' '}<span role="status">{status}</span></p>;
 }
 
 export default function Play({ user }) {
@@ -15,11 +36,13 @@ export default function Play({ user }) {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const matchId = params.get('match');
+  const showDev = import.meta.env.DEV && params.get('dev') === '1' && (slug === 'automate' || slug === 'scarab-21');
 
   const [game, setGame] = useState(null); // null = loading, false = not found
   const [board, setBoard] = useState([]);
   const [match, setMatch] = useState(null);
   const [lobby, setLobby] = useState([]);
+  const [frameRevision, setFrameRevision] = useState(0);
   const iframeRef = useRef(null);
 
   useEffect(() => {
@@ -38,7 +61,7 @@ export default function Play({ user }) {
     setMatch(null);
     if (!game || !iframeRef.current) return undefined;
     return attachBridge(iframeRef.current, { slug, user, matchId, onScore: loadBoard, onMatch: setMatch });
-  }, [game, slug, user?.id, matchId, loadBoard]);
+  }, [game, slug, user?.id, matchId, loadBoard, frameRevision]);
 
   const isMatchGame = game && game.mode === 'match';
 
@@ -54,16 +77,22 @@ export default function Play({ user }) {
     return () => clearInterval(t);
   }, [isMatchGame, matchId, loadLobby, user?.id]);
 
+  function openMatch(id) {
+    const search = new URLSearchParams({ match: id });
+    if (showDev) search.set('dev', '1');
+    navigate(`?${search}`);
+  }
+
   async function newMatch() {
     const r = await api('POST', `/games/${slug}/matches`);
-    if (r.status === 201) navigate(`?match=${r.data.id}`);
+    if (r.status === 201) openMatch(r.data.id);
   }
 
   async function join(id) {
     const r = await api('POST', `/matches/${id}/join`);
     if (r.status === 200) {
       if (id === matchId) setMatch(r.data);
-      else navigate(`?match=${id}`);
+      else openMatch(id);
     } else {
       loadLobby();
     }
@@ -87,7 +116,7 @@ export default function Play({ user }) {
               <li key={m.id}>
                 {m.players[0].name}{' '}
                 {user && (m.you !== null
-                  ? <button type="button" onClick={() => navigate(`?match=${m.id}`)}>Resume</button>
+                  ? <button type="button" onClick={() => openMatch(m.id)}>Resume</button>
                   : <button type="button" onClick={() => join(m.id)}>Join</button>)}
               </li>
             ))}
@@ -98,16 +127,20 @@ export default function Play({ user }) {
       {isMatchGame && matchId && (
         <section>
           <p>{match ? statusLine(match) : 'Loading match…'}</p>
+          {showDev && inMatch && match.status === 'waiting' && <CopyInvite key={matchId} />}
           {user && match && !inMatch && match.status === 'waiting' && (
             <p><button type="button" onClick={() => join(matchId)}>Join this match</button></p>
           )}
-          <p><Link to={`/play/${slug}`}>Leave</Link></p>
+          <p><Link to={`/play/${slug}${showDev ? '?dev=1' : ''}`}>Leave</Link></p>
         </section>
       )}
 
+      {showDev && !matchId && (
+        <p><button type="button" onClick={() => setFrameRevision((revision) => revision + 1)}>Reload game frame</button></p>
+      )}
       <iframe
         ref={iframeRef}
-        key={slug + ':' + (matchId || 'local')}
+        key={slug + ':' + (matchId || 'local') + ':' + frameRevision}
         src={`/games/${slug}/`}
         width={game.width}
         height={game.height}

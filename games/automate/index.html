@@ -19,8 +19,8 @@
   </header>
   <div class="win-content">
     <div id="score" class="win-scores" aria-label="Points">
-      <div class="win-score"><strong>WHITE</strong> <span id="whitePoints">0/35</span></div>
-      <div class="win-score"><strong>BLACK</strong> <span id="blackPoints">0/35</span></div>
+      <div class="win-score"><strong>WHITE</strong> <span id="whitePoints">35 points left</span> <span id="whiteLocked" class="locked" hidden>Army locked</span></div>
+      <div class="win-score"><strong>BLACK</strong> <span id="blackPoints">35 points left</span> <span id="blackLocked" class="locked" hidden>Army locked</span></div>
     </div>
     <div id="layout">
       <div id="left">
@@ -28,30 +28,57 @@
       </div>
       <div id="right">
         <fieldset id="setupPanel">
-          <legend>SETUP</legend>
-          <h2 id="turn">WHITE</h2>
+          <legend>DRAFT</legend>
+          <h2 id="turn" aria-live="polite">White is drafting</h2>
+          <p id="draftHint">Choose a piece, then select an outlined square.</p>
           <div id="pieceTools" aria-label="Pieces"></div>
           <p id="message" role="status" aria-live="polite"></p>
-          <div class="win-actions"><button id="doneBtn">DONE</button><button id="undoBtn">UNDO</button><button id="clearBtn">CLEAR</button></div>
+          <div class="win-actions"><button id="doneBtn" aria-describedby="draftHint">Lock army</button><button id="undoBtn">Undo</button><button id="clearBtn">Clear</button></div>
+          <details class="draft-rules">
+            <summary>How to play</summary>
+            <p>Take turns placing or erasing one piece in your three home ranks. Pawns stay off the back rank. Each side has 35 points and needs one king.</p>
+            <p>Once both armies are locked, Stockfish plays both sides. Both kings must start out of check.</p>
+          </details>
         </fieldset>
         <fieldset id="battlePanel" hidden>
-          <legend>GAME</legend>
-          <h2 id="gameStatus">GAME</h2>
-          <div class="win-actions"><button id="playBtn">PAUSE</button><button id="stepBtn">STEP</button></div>
-          <p class="win-think"><label for="thinkMs">TIME:</label>
-            <select id="thinkMs">
-              <option value="100">0.1s</option>
-              <option value="300">0.3s</option>
-              <option value="600" selected>0.6s</option>
-              <option value="1200">1.2s</option>
-              <option value="2500">2.5s</option>
-              <option value="5000">5s</option>
-              <option value="10000">10s</option>
-            </select>
-          </p>
-          <div class="win-actions"><button id="rematchBtn">REMATCH</button><button id="newBtn">NEW</button></div>
+          <legend>BATTLE</legend>
+          <h2 id="gameStatus" aria-live="polite">Battle</h2>
+          <div class="win-actions"><button id="playBtn">Pause</button><button id="stepBtn">Step</button><button id="rematchBtn">Rematch</button><button id="newBtn">New draft</button></div>
           <div id="moves" aria-label="Moves"></div>
         </fieldset>
+        <details id="settings" class="settings">
+          <summary>Settings</summary>
+          <div id="engineSettings">
+            <label class="setting" for="thinkMs">Engine think time
+              <select id="thinkMs">
+                <option value="100">0.1 s</option>
+                <option value="300">0.3 s</option>
+                <option value="600" selected>0.6 s</option>
+                <option value="1200">1.2 s</option>
+                <option value="2500">2.5 s</option>
+                <option value="5000">5 s</option>
+                <option value="10000">10 s</option>
+              </select>
+            </label>
+            <label class="setting" for="moveDelay">Pause between moves
+              <select id="moveDelay">
+                <option value="0">None</option>
+                <option value="250" selected>0.25 s</option>
+                <option value="750">0.75 s</option>
+                <option value="1500">1.5 s</option>
+              </select>
+            </label>
+            <label class="setting" id="strengthSetting" for="skillLevel">Engine strength
+              <select id="skillLevel">
+                <option value="0">Low</option>
+                <option value="7">Medium</option>
+                <option value="14">High</option>
+                <option value="20" selected>Full</option>
+              </select>
+            </label>
+          </div>
+          <label class="setting sound-setting"><input type="checkbox" id="sound"> Sound effects</label>
+        </details>
       </div>
     </div>
   </div>
