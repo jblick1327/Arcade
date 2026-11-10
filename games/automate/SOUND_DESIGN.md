@@ -34,11 +34,13 @@ tactile layer but adds the check accent instead of playing two entire cues.
   These are signal estimates, **not** calibrated perceived loudness.
 - Draft edits are quieter, while castling is two soft taps, not two
   full-volume captures.
-- Transient chess accents go through a dedicated accent bus. During
-  checks and end states the movement bus dips briefly to 70%, then
-  recovers smoothly. This makes critical sounds legible without a sudden mute.
-- All cues share a master gain (70% slider default, capped at .85
-  internally for headroom) feeding gentle dynamics compression.
+- The movement and synthesized accent voices connect directly to a single
+  master gain (70% slider default, capped at .85 internally for headroom).
+  There is no compressor or automatic ducking: signal tests found the
+  compressor's -22 dBFS threshold was not reached in plausible event mixes,
+  and ducking softened the initial impact of check and mate moves.
+- Existing per-event gains provide the intended loudness contrast without
+  processing a sustained bed that does not exist in Automate.
 - Separate Web Audio one-shots allow samples and accents to overlap
   without one move cutting off the previous sound. Rapid quiet moves
   are capped at one per 75 ms to avoid chattering at very high speeds.
@@ -77,3 +79,17 @@ tactile layer but adds the check accent instead of playing two entire cues.
 - [MDN: Autoplay guide](https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Autoplay)
 - [Game Developer: Game Audio Theory: Ducking](https://www.gamedeveloper.com/audio/game-audio-theory-ducking)
 - [Game Audio Learning: Mixing and QA](https://www.gameaudiolearning.com/knowledgebase/how-to-mix-and-qa-test-your-game)
+
+## Dynamics simplification check
+
+A dry-mix simulation using the actual source WAV samples (mono 22.05 kHz),
+the event gains in `audio.js`, and synthesized triangular accent envelopes
+produced peaks of approximately -29.9 dBFS (ordinary moves every 100 ms),
+-25.6 dBFS (capture followed by move), -25.7 dBFS (capture plus check),
+and -25.6 dBFS (capture checkmate). None crossed the previous compressor's
+-22 dBFS threshold. A contrived five-voice pileup peaked at -22.7 dBFS.
+The compressor had a soft knee, so these results don't mean absolutely no
+attenuation, but they establish that dynamic range control is not necessary.
+A captured checking move's peak was reduced from about -25.7 to -27.3 dBFS
+by ducking. Removing the dip preserves the impact instead. These are modeled
+signal metrics, not measured browser output or a substitute for listening.
