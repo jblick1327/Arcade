@@ -67,3 +67,24 @@ rather than triggering a fanfare every turn.
 
 The signal analysis, cue structure and node-level tests are technical checks,
 not a substitute for listening to the finished game in a browser.
+
+## Mix stress check
+
+An offline sample-level simulation combined the actual three WAVs with
+the synthesized accent envelopes at the shipped gains, including a
+worst-case board clear, deck recycle, and game-over on one placement:
+
+| Event | Peak (dBFS) |
+| --- | ---: |
+| Ordinary placement | -29.2 |
+| Standard column clear | -27.8 |
+| Blackjack column clear | -27.8 |
+| Full House column clear | -27.8 |
+| Board clear | -25.9 |
+| Board + deck-clear bonus | -25.9 |
+| Board + deck-clear + game over | -25.9 |
+
+All cases have very substantial peak headroom, so compression is unnecessary.
+The 220–370 ms reward samples have a stronger sustained impression than the
+75 ms placement sample, even when peaks are close. These are offline modeled
+levels and do not constitute an evaluated perceptual mix.
