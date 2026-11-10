@@ -1,7 +1,7 @@
 /* Scarab 21 audio: card-table feedback with small, event-driven flourishes. */
 (() => {
 'use strict';
-let context=null,master=null,placeFilter=null,enabled=false,level=.7;
+let context=null,master=null,enabled=false,level=.7;
 const samples=Object.create(null);
 const Context=window.AudioContext||window.webkitAudioContext;
 const HIGH_AWARDS=new Set(['Super Blackjack','Double Blackjack','Full House']);
@@ -14,13 +14,6 @@ function initialize(){
   master=context.createGain();
   master.gain.value=0;
   master.connect(context.destination);
-  // The original placement sample is very bright and front-loaded.
-  // A shared filter makes frequent card taps softer without affecting reward cues.
-  placeFilter=context.createBiquadFilter();
-  placeFilter.type='lowpass';
-  placeFilter.frequency.value=1500;
-  placeFilter.Q.value=.65;
-  placeFilter.connect(master);
   for(const name of ['place','column-clear','board-clear']){
    fetch('sounds/'+name+'.wav')
     .then(response=>{if(!response.ok)throw Error('HTTP '+response.status);return response.arrayBuffer();})
@@ -61,18 +54,14 @@ function tap(name,at,gain,rate){
   const source=context.createBufferSource(),volume=context.createGain();
   source.buffer=samples[name];
   source.playbackRate.value=rate;
-  if(name==='place'){
-   volume.gain.setValueAtTime(.0001,at);
-   volume.gain.linearRampToValueAtTime(gain,at+.003);
-  }else volume.gain.value=gain;
+  volume.gain.value=gain;
   source.connect(volume);
-  volume.connect(name==='place'?placeFilter:master);
+  volume.connect(master);
   source.start(at);
   source.onended=()=>{source.disconnect();volume.disconnect();};
  }else{
-  // Immediate tactile response while samples decode; no extra assets required.
-  const hz=name==='place'?250:name==='column-clear'?360:440;
-  tone(hz,at,name==='place'?.065:.11,gain*.13);
+  // Avoid substituting a hard synth click for the soft card rustle.
+  if(name!=='place')tone(name==='column-clear'?360:440,at,.11,gain*.13);
  }
 }
 function play(event,{award='',deckClear=false,gameOver=false}={}){
@@ -92,7 +81,7 @@ function play(event,{award='',deckClear=false,gameOver=false}={}){
    tone(698.46,at+.155,.105,.023);
   }
  }else{
-  tap('place',at,.40,rate*.94);
+  tap('place',at,.44,rate);
  }
  if(deckClear){
   // This can coincide with a clear. Use one light bonus accent, never replay a second clear.
