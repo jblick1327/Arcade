@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
-const oscillators=[],gains=[],sources=[],filters=[];
+const oscillators=[],gains=[],sources=[];
 class Param{
  constructor(value=1){this.value=value;this.events=[];}
  setValueAtTime(value,time){this.value=value;this.events.push(['set',value,time]);}
@@ -18,7 +18,6 @@ class Node{
 class AudioContext{
  constructor(){this.currentTime=1;this.state='running';this.destination=new Node();}
  createGain(){const gain=new Node();gains.push(gain);return gain;}
- createBiquadFilter(){const filter=new Node();filters.push(filter);return filter;}
  createOscillator(){const oscillator=new Node();oscillators.push(oscillator);return oscillator;}
  createBufferSource(){const source=new Node();sources.push(source);return source;}
 }
@@ -32,11 +31,6 @@ audio.play('place');
 assert.equal(oscillators.length,0,'Muted by default');
 audio.setEnabled(true);
 assert.equal(gains[0].gain.value,.7*.85,'Direct output has headroom');
-assert.equal(filters.length,1,'A single shared placement filter is created');
-assert.equal(filters[0].type,'lowpass');
-assert.equal(filters[0].frequency.value,1500);
-assert.equal(filters[0].Q.value,.65);
-assert.equal(filters[0].output,gains[0],'Only placement taps use the filter');
 function expect(type,details,oscillatorCount){
  const before=oscillators.length;
  audio.play(type,details);
@@ -65,10 +59,9 @@ assert.ok(oscillators.length>0);
 console.log('Scarab 21 audio cue hierarchy, headroom, event layering, mute and volume pass.');
 
 async function testLoadedBuffers(){
- const loadedSources=[],loadedGains=[],loadedFilters=[];
+ const loadedSources=[],loadedGains=[];
  class LoadedContext extends AudioContext{
   createGain(){const node=new Node();loadedGains.push(node);return node;}
-  createBiquadFilter(){const node=new Node();loadedFilters.push(node);return node;}
   createBufferSource(){const node=new Node();loadedSources.push(node);return node;}
   decodeAudioData(){return Promise.resolve({duration:.075});}
  }
@@ -83,12 +76,9 @@ async function testLoadedBuffers(){
  app.ScarabAudio.play('place');
  assert.equal(loadedSources.length,1,'Placement uses the decoded sample');
  const place=loadedSources[0];
- assert.equal(place.output.output,loadedFilters[0],'Only placement goes through the lowpass');
- assert.ok(place.playbackRate.value>=.9212&&place.playbackRate.value<=.9588,'Placement is pitched down gently');
- const volume=place.output;
- assert.deepEqual(volume.gain.events.map(([kind])=>kind),['set','linear']);
- assert.equal(volume.gain.events[1][1],.40,'Placement attack reaches its quieter level');
- assert.ok(Math.abs(volume.gain.events[1][2]-place.started-.003)<1e-8,'Attack ramp is 3ms');
+ assert.equal(place.output.output,loadedGains[0],'New card-rustle WAV plays directly');
+ assert.ok(place.playbackRate.value>=.98&&place.playbackRate.value<=1.02,'Subtle pitch variation remains');
+ assert.equal(place.output.gain.value,.44,'New rustle gain is restrained');
  app.ScarabAudio.play('column-clear');
  assert.equal(loadedSources.length,2);
  assert.equal(loadedSources[1].output.output,loadedGains[0],'Column clear bypasses the lowpass');
@@ -97,6 +87,6 @@ async function testLoadedBuffers(){
  assert.equal(loadedSources[2].output.output,loadedGains[0],'Board clear bypasses the lowpass');
 }
 testLoadedBuffers().then(
- ()=>console.log('Scarab 21 placement lowpass, softened attack and clear bypass pass.'),
+ ()=>console.log('Scarab 21 soft-card playback and distinct score events pass.'),
  error=>{console.error(error);process.exitCode=1;}
 );
