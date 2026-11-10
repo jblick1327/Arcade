@@ -13,11 +13,12 @@ class Element {
  click(){if(!this.disabled) this.listeners.click?.({target:this});}
  closest(selector){return selector==='button.sq'&&this.className.includes('sq')?this:null;}
 }
-const ids=['board','engineStatus','setupPanel','battlePanel','whitePoints','blackPoints','whiteLocked','blackLocked','turn','draftHint','doneBtn','undoBtn','clearBtn','message','pieceTools','gameStatus','playBtn','stepBtn','moves','thinkMs','moveDelay','skillLevel','sound','rematchBtn','newBtn'];
+const ids=['board','engineStatus','setupPanel','battlePanel','whitePoints','blackPoints','whiteLocked','blackLocked','turn','draftHint','doneBtn','undoBtn','clearBtn','message','pieceTools','gameStatus','playBtn','stepBtn','moves','thinkMs','skillLevel','sound','rematchBtn','newBtn'];
 const elements=Object.fromEntries(ids.map(id=>[id,new Element()]));
 elements.skillLevel.value='7';
 const document={getElementById:id=>{assert.ok(elements[id],id);return elements[id];},createElement:tag=>new Element(tag)};
 const commands=[];
+let deliveredMoves=0;
 class FakeWorker{
  constructor(path){assert.equal(path,'./engine/stockfish.js');this.fen='';this.terminated=false;}
  postMessage(cmd){
@@ -28,7 +29,7 @@ class FakeWorker{
   if(cmd.startsWith('go movetime ')){
    const state=window.ChessRules.parseFen(this.fen);
    const move=window.ChessRules.legal(state)[0];
-   queueMicrotask(()=>this.onmessage?.({data:'bestmove '+window.ChessRules.key(move)}));
+   if(deliveredMoves++===0)queueMicrotask(()=>this.onmessage?.({data:'bestmove '+window.ChessRules.key(move)}));
   }
  }
  terminate(){this.terminated=true;}
