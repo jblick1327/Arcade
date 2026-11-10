@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const { canPlay, newGame, play, total } = window.Scarab21;
+  const { newGame, play, preview, total } = window.Scarab21;
   const symbols = { spades: '♠', hearts: '♥', clubs: '♣', diamonds: '♦' };
   const faces = { A: 'Ace', J: 'Jack', Q: 'Queen', K: 'King' };
   const score = document.getElementById('score');
@@ -18,7 +18,7 @@
   const volumeLabel = document.getElementById('sfxValue');
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   let game;
-  let resolving = false;
+  let badge;
 
   function element(tag, className, text) {
     const node = document.createElement(tag);
@@ -44,57 +44,54 @@
     return node;
   }
 
-  function sound(cue, details) {
-    if (soundToggle.checked) window.ScarabAudio?.play(cue, details);
+  function sound(cue) {
+    if (soundToggle.checked) window.ScarabAudio?.play(cue);
   }
 
   const lanes = Array.from({ length: 5 }, (_, index) => {
     const lane = element('div', 'lane');
     const button = element('button', 'place');
-    const preview = element('span', 'preview');
+    const forecast = element('span', 'preview');
     const pile = element('div', 'pile');
     const sum = element('div', 'sum');
     button.type = 'button';
     button.addEventListener('click', () => place(index));
-    button.append(element('span', 'place-key', `▾ ${index + 1}`), preview);
+    button.append(element('span', 'place-key', `▾ ${index + 1}`), forecast);
     lane.append(button, pile, sum);
     columns.append(lane);
-    return { lane, button, preview, pile, sum };
+    return { lane, button, forecast, pile, sum };
   });
 
   function render() {
     score.textContent = game.score;
     remaining.textContent = game.deck.length;
     current.replaceChildren(cardFace(game.card));
-    for (const [index, { button, preview, pile, sum }] of lanes.entries()) {
+    for (const [index, { button, forecast, pile, sum }] of lanes.entries()) {
       const cards = game.columns[index];
       const value = total(cards);
-      const fits = canPlay(cards, game.card);
-      const nextTotal = total([...cards, game.card]);
-      const clears = fits && (nextTotal === 21 || cards.length === 4);
-      button.disabled = game.over || !fits;
-      button.dataset.result = !fits ? 'bust' : clears ? 'clear' : 'fits';
-      preview.textContent = !fits ? 'Would bust' : clears ? `${nextTotal} · clears` : `${value} → ${nextTotal}`;
-      const forecast = fits ? `would total ${nextTotal}${clears ? ' and clear' : ''}` : 'would bust';
-      button.setAttribute('aria-label', `Column ${index + 1}, total ${value}, ${forecast}`);
+      const { value: next, legal, clear } = preview(game, index);
+      button.disabled = game.over || !legal;
+      button.dataset.result = !legal ? 'bust' : clear || 'fits';
+      forecast.textContent = !legal ? 'Would bust' : clear === 'board' ? 'Board clears'
+        : clear === 'column' ? `${next} · clears` : `${value} → ${next}`;
+      const description = !legal ? 'would bust' : clear === 'board' ? 'would clear the board'
+        : `would total ${next}${clear === 'column' ? ' and clear' : ''}`;
+      button.setAttribute('aria-label', `Column ${index + 1}, total ${value}, ${description}`);
       pile.replaceChildren(...cards.map(cardFace));
       sum.textContent = value || '–';
     }
     again.hidden = !game.over;
   }
 
-  async function showClear(index, wholeBoard, drawn, message) {
-    const { lane, pile } = lanes[index];
-    const badge = element('span', wholeBoard ? 'clear-award board-award' : 'clear-award', message);
-    badge.setAttribute('aria-hidden', 'true');
-    pile.append(cardFace(drawn));
-    (wholeBoard ? board : lane).append(badge);
-
-    const animation = wholeBoard
-      ? columns.animate([{ filter: 'brightness(1)' }, { filter: 'brightness(1.45)' }, { opacity: 0.25 }], { duration: 430 })
-      : pile.animate([{ opacity: 1 }, { opacity: 0.25, transform: 'translateY(-6px)' }], { duration: 320, easing: 'ease-out' });
-    await animation.finished.catch(() => {});
-    badge.remove();
+  function showClear(index, clear, message) {
+    badge?.remove();
+    if (reducedMotion.matches) return;
+    const wholeBoard = clear === 'board';
+    const nextBadge = element('span', wholeBoard ? 'clear-award board-award' : 'clear-award', message);
+    nextBadge.setAttribute('aria-hidden', 'true');
+    (wholeBoard ? board : lanes[index].lane).append(nextBadge);
+    nextBadge.addEventListener('animationend', () => nextBadge.remove(), { once: true });
+    badge = nextBadge;
   }
 
   async function submit(finishedGame) {
@@ -106,31 +103,16 @@
     else status.textContent = 'Could not save score.';
   }
 
-  async function place(index) {
-    if (resolving) return;
-    const drawn = game.card;
-    const hadOtherCards = game.columns.some((pile, lane) => lane !== index && pile.length > 0);
+  function place(index) {
+    const clear = preview(game, index)?.clear;
     const awards = play(game, index);
     if (!awards) return;
 
     const messages = awards.map(([label, points]) => `${label} +${points}`);
-    const cleared = game.columns[index].length === 0;
-    const wholeBoard = cleared && hadOtherCards && game.columns.every((pile) => pile.length === 0);
-    const mainAward = awards.find(([label]) => label !== 'Deck Clear')?.[0] || '';
-    sound(wholeBoard ? 'board-clear' : cleared ? 'column-clear' : 'place', {
-      award: mainAward,
-      deckClear: awards.some(([label]) => label === 'Deck Clear'),
-      gameOver: game.over,
-    });
-    if (cleared && !reducedMotion.matches) {
-      resolving = true;
-      board.setAttribute('aria-busy', 'true');
-      await showClear(index, wholeBoard, drawn, messages[0]);
-      board.removeAttribute('aria-busy');
-      resolving = false;
-    }
     render();
     award.textContent = messages.join(' · ') || (game.over ? '' : 'Choose a column for the draw.');
+    if (clear) showClear(index, clear, messages[0]);
+    sound(game.over ? 'end' : clear || 'place');
 
     if (game.over) {
       result.textContent = `Final score ${game.score}. No column can take the ${cardName(game.card)}.`;
@@ -145,6 +127,7 @@
   }
 
   function start() {
+    badge?.remove();
     game = newGame();
     render();
     result.hidden = true;
@@ -158,7 +141,6 @@
   });
   soundToggle.addEventListener('change', () => {
     window.ScarabAudio?.setEnabled(soundToggle.checked);
-    if (soundToggle.checked) sound('place');
   });
   volume.addEventListener('input', () => {
     volumeLabel.textContent = volume.value + '%';

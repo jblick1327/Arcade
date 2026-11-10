@@ -36,6 +36,7 @@ h2 { margin:2px 0 10px; font:bold 13px Tahoma,Arial,sans-serif; }
 #message.error { color:#ae0000; font-weight:bold; }
 #gameStatus { min-height:25px; background:#fff; padding:6px; border:2px solid; border-color:#808080 #fff #fff #808080; box-shadow:inset 1px 1px #404040; }
 #gameStatus.finished { background:#fff4c9; }
+.sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
 #moves { background:#fff; border:2px solid; border-color:#808080 #fff #fff #808080; box-shadow:inset 1px 1px #404040; font:12px/1.5 "Courier New",monospace; padding:4px 6px; min-height:135px; max-height:210px; overflow-y:auto; margin-top:10px; }
 #moves div:last-child { font-weight:bold; }
 .settings { padding:7px 9px; border:2px groove #fff; }

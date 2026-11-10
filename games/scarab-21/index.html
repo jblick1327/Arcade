@@ -50,11 +50,11 @@
       </fieldset>
       <fieldset id="guide">
         <legend>QUICK RULES</legend>
-        <p>Hit 21 or place five legal cards to clear a column.</p>
+        <p>Hit 21 or place five legal cards to clear a column. Face cards count as 10. Aces count as 1 or 11.</p>
         <p class="keyboard"><kbd>1</kbd>–<kbd>5</kbd> Place card</p>
         <details>
           <summary>How to play</summary>
-          <p>Face cards count as 10. Aces count as 1 or 11. The run ends when the draw fits nowhere.</p>
+          <p>The run ends when the draw fits nowhere.</p>
           <dl aria-label="Scoring">
             <div><dt>Blackjack · Ace and a 10-value card</dt><dd>21</dd></div>
             <div><dt>Large 21 · 4–5 cards</dt><dd>15</dd></div>
@@ -70,9 +70,9 @@
           </dl>
           <p>Five of a Kind and Straight clear the whole board. Clearing the deck reshuffles cleared cards.</p>
         </details>
-        <label class="sound-setting"><input type="checkbox" id="sound"> Sound effects</label>
         <details class="audio-settings">
           <summary>Sound settings</summary>
+          <label class="sound-setting"><input type="checkbox" id="sound"> Sound effects</label>
           <label class="volume-setting" for="sfxVolume">Effects volume
             <input type="range" id="sfxVolume" min="0" max="100" step="5" value="70">
             <output id="sfxValue" for="sfxVolume">70%</output>

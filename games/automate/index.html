@@ -43,7 +43,8 @@
         </fieldset>
         <fieldset id="battlePanel" hidden>
           <legend>BATTLE</legend>
-          <h2 id="gameStatus" aria-live="polite">Battle</h2>
+          <h2 id="gameStatus">Battle</h2>
+          <span id="battleResult" class="sr-only" role="status"></span>
           <div class="win-actions"><button id="playBtn">Pause</button><button id="stepBtn">Step</button><button id="rematchBtn">Rematch</button><button id="newBtn">New draft</button></div>
           <div id="moves" aria-label="Moves"></div>
         </fieldset>
@@ -59,14 +60,6 @@
                 <option value="2500">2.5 s</option>
                 <option value="5000">5 s</option>
                 <option value="10000">10 s</option>
-              </select>
-            </label>
-            <label class="setting" id="strengthSetting" for="skillLevel">Engine strength
-              <select id="skillLevel">
-                <option value="0">Low</option>
-                <option value="7">Medium</option>
-                <option value="14">High</option>
-                <option value="20" selected>Full</option>
               </select>
             </label>
           </div>

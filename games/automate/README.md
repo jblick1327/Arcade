@@ -1,6 +1,6 @@
 # AUTOMATE
 
-2 players, 35 points each. Place one piece each turn. Press DONE to start a Stockfish auto-battle.
+2 players, 35 points each. Place one piece each turn. Press Lock army to start a Stockfish auto-battle.
 
 Stockfish 11 WASM (accepts any army): GPLv3, compiled by stockfish.js (see `engine/README.txt`). Game code: MIT.
 

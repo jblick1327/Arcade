@@ -6,7 +6,6 @@ const ICON={w:{P:'♙',N:'♘',B:'♗',R:'♖',Q:'♕',K:'♔'},b:{P:'♟︎',N:
 const PIECE={P:'Pawn',N:'Knight',B:'Bishop',R:'Rook',Q:'Queen',K:'King',X:'Erase'};
 let draft=A.create(),phase='draft',brush='P';
 let game=null,worker=null,ready=false,searching=false,discard=false,timeout=null,engineId=0;
-let engineSkill;
 const colorOf=p=>p===p.toUpperCase()?'w':'b';
 // Online (Arcade match) state. Everything below is inert when no match is attached.
 let online=false,match=null,you=null,busy=false,engineStarted=false;
@@ -95,6 +94,7 @@ function render(){
   const label=game.finished&&game.drawClaim?'Draw by '+game.drawClaim+'.':state.text;
   setStatus('gameStatus',eng||game.finished?label+(game.paused&&!game.finished?' · Paused':''):'Loading Stockfish…');
   $('gameStatus').classList.toggle('finished',game.finished);
+  setStatus('battleResult',game.finished?label:'');
   $('playBtn').disabled=!ready||game.finished;
   $('playBtn').textContent=game.paused?'Resume':'Pause';
   $('stepBtn').disabled=!ready||game.finished;
@@ -114,7 +114,7 @@ $('board').addEventListener('click',e=>{
  const button=e.target.closest('button.sq');
  if(!button||phase!=='draft'||!canAct())return;
  const chosenBrush=brush;
- if(useResult(A.perform(draft,brush,Number(button.dataset.index))))sound(chosenBrush==='X'?'erase':'draft');
+ if(useResult(A.perform(draft,brush,Number(button.dataset.index)))&&chosenBrush!=='X')sound('draft');
 });
 function validate(s){let state;try{state=R.parseFen(A.fen(s));}catch(e){return {error:e.message};}
  if(R.checked(state,1)||R.checked(state,-1))return {error:'Both kings must start out of check. Adjust your draft to continue.'};
@@ -128,10 +128,9 @@ $('doneBtn').addEventListener('click',()=>{
  if(A.complete(result.state)){
   const check=validate(result.state);
   if(check.error){info(check.error,true);return;}
-  sound('lock');
   if(online){submitBattle(result.state);return;}
   draft=result.state;startBattle(check.state);
- }else if(useResult(result))sound('lock');
+ }else useResult(result);
 });
 $('undoBtn').addEventListener('click',()=>useResult(A.undo(draft)));
 $('clearBtn').addEventListener('click',()=>{draft=A.create();brush='P';info('');render();});
@@ -139,7 +138,7 @@ function send(cmd){if(worker)worker.postMessage(cmd);}
 function killEngine(){
  engineId++;clearTimeout(timeout);
  if(worker){worker.terminate();worker=null;}
- ready=false;searching=false;discard=false;engineSkill=undefined;
+ ready=false;searching=false;discard=false;
 }
 function engineFailed(error){
  console.error('[Automate engine]',error);
@@ -195,9 +194,7 @@ async function startEngine(){
 function doneIfFinished(){if(phase!=='battle'||!game)return true;const st=R.status(game.history);if(st.done||st.claim){game.finished=true;game.paused=true;game.pendingStep=false;game.drawClaim=st.claim||'';return true;}return false;}
 function requestMove(){if(phase!=='battle'||!ready||searching||game.finished||game.paused&&!game.pendingStep)return;
  if(doneIfFinished()){render();return;}
- const skill=online?20:Number($('skillLevel').value);
- if(skill!==engineSkill){send('setoption name Skill Level value '+skill);engineSkill=skill;}
- searching=true;send('position fen '+R.toFen(game.history.at(-1)));send('go movetime '+game.thinkMs);render();}
+ searching=true;send('position fen '+R.toFen(game.history.at(-1)));send('go movetime '+game.thinkMs);}
 function recordMove(g,before,move,uci){
  const [from,to,,flag]=move;
  const target=(to>>4)*8+(to&7);
@@ -211,9 +208,8 @@ function moveFeedback(){
  if(!game?.last)return;
  const {capture,target,castle,promotion}=game.last;
  if(capture)$('board').children[target].classList.add('capture');
- const state=game.history.at(-1),checked=R.checked(state);
- const checkmate=game.finished&&checked&&!R.legal(state).length;
- const cue=checkmate?'checkmate':game.finished?'draw':promotion?'promotion':checked?'check':castle?'castle':capture?'capture':'move';
+ const mate=game.finished&&game.moves.at(-1).endsWith('#');
+ const cue=mate?'checkmate':game.finished?'draw':promotion?'promotion':castle?'castle':capture?'capture':'move';
  sound(cue,{capture});
 }
 function bestMove(best){if(!searching)return;searching=false;
@@ -240,7 +236,6 @@ $('stepBtn').addEventListener('click',()=>{
 $('thinkMs').addEventListener('change',e=>{if(game)game.thinkMs=Number(e.target.value);});
 $('sound').addEventListener('change',()=>{
  window.AutomateAudio?.setEnabled($('sound').checked);
- if($('sound').checked)sound('draft');
 });
 $('sfxVolume').addEventListener('input',e=>{
  $('sfxValue').textContent=e.target.value+'%';
@@ -254,7 +249,7 @@ render();engineInfo('');
 function onlineChrome(){
  const runner=amRunner();
  $('undoBtn').hidden=true;$('clearBtn').hidden=true;$('rematchBtn').hidden=true;$('newBtn').hidden=true;
- $('playBtn').hidden=!runner;$('stepBtn').hidden=!runner;$('engineSettings').hidden=!runner;$('strengthSetting').hidden=true;
+ $('playBtn').hidden=!runner;$('stepBtn').hidden=!runner;$('engineSettings').hidden=!runner;
 }
 function replay(s,prev){
  let cur=R.parseFen(A.fen(s.draft));

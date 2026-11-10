@@ -19,9 +19,8 @@ class Element {
  click(){if(!this.disabled) this.listeners.click?.({target:this});}
  closest(selector){return selector==='button.sq'&&this.className.includes('sq')?this:null;}
 }
-const ids=['board','engineStatus','setupPanel','battlePanel','whitePoints','blackPoints','whiteLocked','blackLocked','turn','draftHint','doneBtn','undoBtn','clearBtn','message','pieceTools','gameStatus','playBtn','stepBtn','moves','thinkMs','skillLevel','sound','sfxVolume','sfxValue','rematchBtn','newBtn'];
+const ids=['board','engineStatus','setupPanel','battlePanel','whitePoints','blackPoints','whiteLocked','blackLocked','turn','draftHint','doneBtn','undoBtn','clearBtn','message','pieceTools','gameStatus','battleResult','playBtn','stepBtn','moves','thinkMs','sound','sfxVolume','sfxValue','rematchBtn','newBtn'];
 const elements=Object.fromEntries(ids.map(id=>[id,new Element()]));
-elements.skillLevel.value='7';
 const document={getElementById:id=>{assert.ok(elements[id],id);return elements[id];},createElement:tag=>new Element(tag)};
 elements.sound.checked=true;
 const commands=[];
@@ -35,8 +34,11 @@ class FakeWorker{
   if(cmd.startsWith('position fen '))this.fen=cmd.slice(13);
   if(cmd.startsWith('go movetime ')){
    const state=window.ChessRules.parseFen(this.fen);
-   const move=window.ChessRules.legal(state)[0];
-   if(deliveredMoves++===0)queueMicrotask(()=>this.onmessage?.({data:'bestmove '+window.ChessRules.key(move)}));
+   if(deliveredMoves++===0){
+    const capture=window.ChessRules.fromUci(state,'d3d6');
+    assert.ok(capture,'fixture opens with a legal capture');
+    queueMicrotask(()=>this.onmessage?.({data:'bestmove d3d6'}));
+   }
   }
  }
  terminate(){this.terminated=true;}
@@ -54,7 +56,6 @@ assert.match(elements.draftHint.textContent,/king/);
 assert.equal(elements.message.textContent,'');
 elements.sound.listeners.change();
 assert.ok(soundEvents.includes('enabled'));
-assert.ok(soundEvents.includes('draft'),'Enabling sound gives quiet confirmation');
 const choose=name=>{
  const btn=elements.pieceTools.children.find(el=>el.children[1].textContent.startsWith(name));assert.ok(btn,name);btn.click();};
 const pick=i=>{const square=elements.board.children[i];elements.board.listeners.click({target:square});};
@@ -65,21 +66,20 @@ pick(60);assert.equal(elements.turn.textContent,'Black is drafting');
 choose('King');pick(4);assert.equal(elements.turn.textContent,'White is drafting');
 choose('King');assert.equal(highlighted().length,0,'A second king has no legal squares');
 choose('Erase');assert.deepEqual(highlighted().map(square=>square.dataset.index),[60]);
-choose('Queen');pick(51);assert.equal(elements.turn.textContent,'Black is drafting');
-choose('Rook');pick(8);assert.equal(elements.turn.textContent,'White is drafting');
+choose('Queen');pick(43);assert.equal(elements.turn.textContent,'Black is drafting');
+choose('Rook');pick(19);assert.equal(elements.turn.textContent,'White is drafting');
 assert.equal(elements.whitePoints.textContent,'26 points left');assert.equal(elements.blackPoints.textContent,'30 points left');
 elements.doneBtn.click();assert.equal(elements.turn.textContent,'Black is drafting');
 assert.equal(elements.whiteLocked.hidden,false);
 elements.doneBtn.click();assert.equal(elements.setupPanel.hidden,true);assert.equal(elements.battlePanel.hidden,false);
 assert.ok(soundEvents.filter(cue=>cue==='draft').length>=2,'Draft placement sounds are classified');
-assert.ok(soundEvents.includes('lock'),'Locking an army has its own cue');
 assert.equal(elements.board.children.length,64);
 setImmediate(()=>{
  assert.equal(elements.gameStatus.textContent==='ENGINE ERROR',false,'Mock UCI initialized');
  assert.ok(elements.moves.children.length>0,'Mock engine made its first legal move');
- assert.ok(commands.includes('setoption name Skill Level value 7'));
- assert.ok(commands.includes('go movetime 600'));
- assert.ok(soundEvents.some(cue=>['move','capture','check','castle','promotion','checkmate','draw'].includes(cue)),'Battle moves use event-specific sounds');
+ assert.equal(commands.filter(cmd=>cmd==='go movetime 600').length,2);
+ assert.ok(elements.board.children[19].className.includes('capture'),'Next search preserves the capture flash');
+ assert.equal(soundEvents.at(-1),'capture');
  assert.match(elements.engineStatus.textContent,/STOCKFISH 11/);
  console.log('Browser UCI simulated: board starts empty, alternating draft, engine initializes and plays legal move.');
 });

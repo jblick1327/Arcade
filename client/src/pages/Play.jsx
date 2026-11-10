@@ -9,8 +9,8 @@ function inviteUrl() {
   return url.href;
 }
 
-function statusLine(m) {
-  if (m.status === 'waiting') return `Waiting for an opponent. Send them this link: ${inviteUrl()}`;
+function statusLine(m, showDev) {
+  if (m.status === 'waiting') return `Waiting for an opponent. Send them this link: ${showDev ? inviteUrl() : window.location.href}`;
   const [a, b] = m.players.map((p) => p.name);
   if (m.status === 'done') return `${a} vs ${b} — ${m.winner === null ? 'draw' : m.players[m.winner].name + ' won'}`;
   return `${a} vs ${b} — in progress`;
@@ -36,13 +36,12 @@ export default function Play({ user }) {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const matchId = params.get('match');
-  const showDev = import.meta.env.DEV && params.get('dev') === '1' && (slug === 'automate' || slug === 'scarab-21');
+  const showDev = import.meta.env.DEV && params.get('dev') === '1' && slug === 'automate';
 
   const [game, setGame] = useState(null); // null = loading, false = not found
   const [board, setBoard] = useState([]);
   const [match, setMatch] = useState(null);
   const [lobby, setLobby] = useState([]);
-  const [frameRevision, setFrameRevision] = useState(0);
   const iframeRef = useRef(null);
 
   useEffect(() => {
@@ -61,7 +60,7 @@ export default function Play({ user }) {
     setMatch(null);
     if (!game || !iframeRef.current) return undefined;
     return attachBridge(iframeRef.current, { slug, user, matchId, onScore: loadBoard, onMatch: setMatch });
-  }, [game, slug, user?.id, matchId, loadBoard, frameRevision]);
+  }, [game, slug, user?.id, matchId, loadBoard]);
 
   const isMatchGame = game && game.mode === 'match';
 
@@ -126,7 +125,7 @@ export default function Play({ user }) {
 
       {isMatchGame && matchId && (
         <section>
-          <p>{match ? statusLine(match) : 'Loading match…'}</p>
+          <p>{match ? statusLine(match, showDev) : 'Loading match…'}</p>
           {showDev && inMatch && match.status === 'waiting' && <CopyInvite key={matchId} />}
           {user && match && !inMatch && match.status === 'waiting' && (
             <p><button type="button" onClick={() => join(matchId)}>Join this match</button></p>
@@ -135,12 +134,9 @@ export default function Play({ user }) {
         </section>
       )}
 
-      {showDev && !matchId && (
-        <p><button type="button" onClick={() => setFrameRevision((revision) => revision + 1)}>Reload game frame</button></p>
-      )}
       <iframe
         ref={iframeRef}
-        key={slug + ':' + (matchId || 'local') + ':' + frameRevision}
+        key={slug + ':' + (matchId || 'local')}
         src={`/games/${slug}/`}
         width={game.width}
         height={game.height}

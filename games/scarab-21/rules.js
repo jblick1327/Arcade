@@ -23,12 +23,16 @@
     return hasAce && sum <= 11 ? sum + 10 : sum;
   }
 
-  function canPlay(column, card) {
-    return column.length < 5 && total([...column, card]) <= 21;
+  function fits(cards, value) {
+    return cards.length <= 5 && value <= 21;
   }
 
-  function columnAward(cards, previousQueenSuit) {
-    const value = total(cards);
+  function canPlay(column, card) {
+    const cards = [...column, card];
+    return fits(cards, total(cards));
+  }
+
+  function columnAward(cards, previousQueenSuit, value) {
     if (value < 21) return cards.length === 5 ? ['5 under 21', 5] : null;
 
     const pattern = cards.map(({ rank }) => rank).sort().join(',');
@@ -78,21 +82,35 @@
     };
   }
 
-  function play(game, index, random = Math.random) {
+  function preview(game, index) {
     const column = game.columns[index];
-    if (game.over || !column || !canPlay(column, game.card)) return null;
+    if (!column) return null;
 
-    const awards = [];
+    const cards = [...column, game.card];
+    const value = total(cards);
+    if (!fits(cards, value)) return { value, legal: false, clear: null };
+
+    const award = columnAward(cards, game.previousQueenSuit, value);
+    if (award) return { value, legal: true, clear: 'column', award };
+
+    const board = boardAward(game.columns.map((pile, lane) => lane === index ? cards : pile));
+    return { value, legal: true, clear: board ? 'board' : null, award: board };
+  }
+
+  function play(game, index, random = Math.random) {
+    if (game.over) return null;
+    const outcome = preview(game, index);
+    if (!outcome?.legal) return null;
+
+    const { award, clear } = outcome;
+    const column = game.columns[index];
+    const awards = award ? [award] : [];
     column.push(game.card);
-    const award = columnAward(column, game.previousQueenSuit);
-    const board = award ? null : boardAward(game.columns);
 
-    if (award) {
-      awards.push(award);
+    if (clear === 'column') {
       game.previousQueenSuit = queenSuit(column);
       game.discard.push(...column.splice(0));
-    } else if (board) {
-      awards.push(board);
+    } else if (clear === 'board') {
       game.previousQueenSuit = null;
       for (const pile of game.columns) game.discard.push(...pile.splice(0));
     }
@@ -109,7 +127,7 @@
     return awards;
   }
 
-  const rules = { total, canPlay, newGame, play };
+  const rules = { total, canPlay, newGame, play, preview };
   if (typeof module === 'object' && module.exports) module.exports = rules;
   else window.Scarab21 = rules;
 })();
