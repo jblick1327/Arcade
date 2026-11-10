@@ -24,7 +24,7 @@
   // ---------------------------------------------------------------- state
   let phase = 'intro';     // intro | playing | dying | over
   let blocks, mover, debris, popups, rings;
-  let score, combo, camY, shake, dyingFor, overSince, failMsg, failWhere, cuts;
+  let score, combo, camY, shake, dyingFor, overSince, failMsg, failWhere, cuts, banner;
   let best = 0;
   let runId = 0;
 
@@ -34,6 +34,7 @@
     popups = [];
     rings = [];
     cuts = [];
+    banner = null;
     score = 0;
     combo = 0;
     camY = 0;
@@ -53,43 +54,22 @@
   const screenY = (wy) => H - GROUND_H - wy + camY;
 
   // ---------------------------------------------------------------- sound
-  let audio = null;
-  let muted = false;
-
-  function ensureAudio() {
-    if (audio || muted) return;
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (AC) {
-      try { audio = new AC(); } catch (e) { audio = null; }
-    }
-    if (audio && audio.state === 'suspended') audio.resume();
-  }
-
-  function beep(freq, dur, type, gain, slideTo) {
-    if (muted || !audio) return;
-    const t = audio.currentTime;
-    const osc = audio.createOscillator();
-    const amp = audio.createGain();
-    osc.type = type || 'triangle';
-    osc.frequency.setValueAtTime(freq, t);
-    if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
-    amp.gain.setValueAtTime(gain || 0.12, t);
-    amp.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    osc.connect(amp).connect(audio.destination);
-    osc.start(t);
-    osc.stop(t + dur + 0.02);
-  }
-
-  $('sound').addEventListener('click', (e) => {
-    muted = !muted;
-    e.currentTarget.textContent = 'sound: ' + (muted ? 'off' : 'on');
-    e.currentTarget.blur();
-    if (!muted) ensureAudio();
+  const Sfx = window.MernSfx;
+  const soundBtn = $('sound');
+  function showSound() { soundBtn.textContent = 'sound: ' + (Sfx.muted ? 'off' : 'on'); }
+  try { Sfx.setMuted(localStorage.getItem('mern-stacker:muted') === '1'); } catch (e) { /* storage blocked */ }
+  showSound();
+  soundBtn.addEventListener('click', () => {
+    Sfx.setMuted(!Sfx.muted);
+    try { localStorage.setItem('mern-stacker:muted', Sfx.muted ? '1' : '0'); } catch (e) { /* fine */ }
+    showSound();
+    soundBtn.blur();
   });
 
   // ---------------------------------------------------------------- game flow
   function start() {
-    ensureAudio();
+    Sfx.unlock();
+    Sfx.start();
     reset();
     phase = 'playing';
     $('intro').hidden = true;
@@ -105,8 +85,11 @@
     });
   }
 
+  // Floating text for a drop at `level`. It starts just above the next sliding block,
+  // so it never sits on top of the block you are about to aim.
   function popup(text, level, x, color) {
-    popups.push({ text, wx: x, wy: worldTop(level), t: 0, color: color || '#e6edf3' });
+    for (const p of popups) p.t = Math.max(p.t, 0.9); // hurry older ones off so they never overlap
+    popups.push({ text, wx: x, wy: worldTop(level + 1) + 12, t: 0, color: color || '#e6edf3' });
   }
 
   function drop() {
@@ -122,7 +105,7 @@
       phase = 'dying';
       dyingFor = 0;
       shake = reduceMotion ? 0 : 10;
-      beep(220, 0.5, 'sawtooth', 0.12, 55);
+      Sfx.fail();
       return;
     }
 
@@ -131,7 +114,9 @@
       const label = R.cutLabel(cuts.length);
       cuts.push(label);
       popup('- ' + label, level, res.cut.x + res.cut.w / 2, '#ff7b72');
+      Sfx.slice(res.cut.w / top.w);
     }
+    Sfx.place(level);
 
     let placed = res.placed;
     if (res.perfect) {
@@ -142,18 +127,18 @@
       rings.push({ x: placed.x, w: placed.w, wy: worldTop(level), t: 0 });
       popup(R.pick(style.perfect) + (combo > 1 ? ' x' + combo : '') + (regrew ? ' +width' : ''),
         level, placed.x + placed.w / 2, '#7ee787');
-      beep(520 * Math.pow(2, Math.min(combo - 1, 12) * 2 / 12), 0.18, 'triangle', 0.14);
+      Sfx.perfect(combo);
+      if (regrew) Sfx.grow();
     } else {
       combo = 0;
-      beep(200 + (level % 4) * 30, 0.1, 'triangle', 0.12);
     }
 
     blocks.push(placed);
     score++;
     const release = R.releaseAt(level);
     if (release) {
-      popup(R.releaseLabel(release), level + 1, W / 2, '#f2cc60');
-      beep(880, 0.25, 'square', 0.06);
+      banner = { text: R.releaseLabel(release), t: 0 };
+      Sfx.release();
     }
     spawnMover();
   }
@@ -166,7 +151,7 @@
 
   canvas.addEventListener('pointerdown', (e) => {
     if (e.button > 0) return;
-    ensureAudio();
+    Sfx.unlock();
     press();
   });
 
@@ -175,7 +160,7 @@
     if (e.key !== ' ' && e.key !== 'Enter' && e.key !== 'ArrowDown') return;
     if (e.target instanceof HTMLButtonElement) return; // let a focused button act as a button
     e.preventDefault();
-    ensureAudio();
+    Sfx.unlock();
     press();
   });
 
@@ -197,7 +182,8 @@
       ? 'Shipped without: ' + R.cutSummary(cuts) + (cuts.length > 3 ? ' (' + cuts.length + ' cuts)' : '')
       : 'Shipped with zero scope cuts. Suspicious.';
     $('final').textContent = finalScore;
-    $('rank').textContent = 'Rank: ' + R.rankFor(finalScore) + (newBest && finalScore > 0 ? '  (new session best)' : '');
+    $('rank').textContent = 'Rank: ' + R.rankFor(finalScore);
+    $('best').hidden = !(newBest && finalScore > 0);
     $('status').textContent = finalScore > 0 ? 'Deploying score…' : 'Nothing was shipped.';
     $('board').replaceChildren();
     $('over').hidden = false;
@@ -251,6 +237,7 @@
     for (const r of rings) r.t += dt;
     rings = rings.filter((r) => r.t < 0.4);
     shake = Math.max(0, shake - dt * 30);
+    if (banner && (banner.t += dt) > 1.8) banner = null;
 
     if (phase === 'dying') {
       dyingFor += dt * 1000;
@@ -318,6 +305,18 @@
     ctx.fillText('node_modules/  (1.2 GB)', W / 2, y + 26);
   }
 
+  // Text with a dark outline so it stays readable over blocks and gutter numbers.
+  function outlinedText(text, x, y, color) {
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = 'rgba(13,17,23,0.9)';
+    ctx.strokeText(text, x, y);
+    ctx.fillStyle = color;
+    ctx.fillText(text, x, y);
+  }
+
   function drawHud() {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
@@ -331,6 +330,13 @@
     if (combo >= 2) {
       ctx.fillStyle = '#7ee787';
       ctx.fillText('perfect streak x' + combo, W / 2, 118);
+    }
+    if (banner) {
+      const k = banner.t / 1.8;
+      ctx.globalAlpha = k < 0.75 ? 1 : (1 - k) / 0.25;
+      ctx.font = '700 18px ui-monospace, Menlo, Consolas, monospace';
+      outlinedText(banner.text, W / 2, 148 - Math.min(1, banner.t * 8) * 6, '#f2cc60');
+      ctx.globalAlpha = 1;
     }
   }
 
@@ -368,14 +374,13 @@
       ctx.strokeRect(r.x - grow, screenY(r.wy) - grow, r.w + grow * 2, BH + grow * 2);
     }
 
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
     ctx.font = '700 15px ui-monospace, Menlo, Consolas, monospace';
     for (const p of popups) {
       ctx.globalAlpha = Math.max(0, 1 - p.t / 1.1);
-      ctx.fillStyle = p.color;
-      const x = Math.max(70, Math.min(W - 70, p.wx));
-      ctx.fillText(p.text, x, screenY(p.wy) - 16 - p.t * 36);
+      // Keep the whole string inside the frame, however long it is.
+      const half = ctx.measureText(p.text).width / 2 + 10;
+      const x = Math.max(half, Math.min(W - half, p.wx));
+      outlinedText(p.text, x, screenY(p.wy) - p.t * 36, p.color);
     }
     ctx.globalAlpha = 1;
 
