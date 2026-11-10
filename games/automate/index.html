@@ -9,6 +9,7 @@
 <script src="/sdk/arcade.js"></script>
 <script defer src="rules.js"></script>
 <script defer src="setup.js"></script>
+<script defer src="audio.js"></script>
 <script defer src="app.js"></script>
 </head>
 <body>
@@ -70,6 +71,10 @@
             </label>
           </div>
           <label class="setting sound-setting"><input type="checkbox" id="sound"> Sound effects</label>
+          <label class="setting" for="sfxVolume">Effects volume
+            <input type="range" id="sfxVolume" min="0" max="100" step="5" value="70">
+            <output id="sfxValue" for="sfxVolume">70%</output>
+          </label>
         </details>
       </div>
     </div>
