@@ -11,7 +11,7 @@ class Param{
 }
 class Node{
  constructor(){this.gain=new Param();this.frequency=new Param(440);this.playbackRate=new Param(1);}
- connect(dest){return dest;}
+ connect(dest){this.connectedTo=dest;return dest;}
  disconnect(){}
  start(t){this.started=t;}
  stop(t){this.stopped=t;}
@@ -47,8 +47,11 @@ function expect(cue,count,options){
 const move=expect('move',1);
 expect('move',0); // no machine-gun repeated normal taps at extremely fast engine speeds
 const capture=expect('capture',1);
-const moveLevel=move[0].gain, captureLevel=capture[0].gain;
-assert.ok(moveLevel&&captureLevel);
+const peak=oscillator=>Math.max(...oscillator.connectedTo.gain.events
+ .filter(event=>event[0]==='exponential')
+ .map(event=>event[1]));
+const ratio=peak(capture[0])/peak(move[0]);
+assert.ok(ratio>1.2&&ratio<1.6,'Capture impact is heavier but not dramatically louder');
 expect('castle',2);
 const check=expect('check',2,{capture:true});
 assert.ok(Math.abs(check[1].frequency.value-698.46)<.01,'Check has a distinct warning pitch');
