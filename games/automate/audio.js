@@ -1,7 +1,7 @@
 /* Automate audio: a restrained, self-contained mixer for chess events. */
 (() => {
 'use strict';
-let ctx=null,master=null,moves=null,accent=null;
+let ctx=null,master=null;
 let enabled=false,level=.7,lastQuiet=-Infinity;
 const buffers=Object.create(null);
 const Context=window.AudioContext||window.webkitAudioContext;
@@ -12,20 +12,9 @@ function initialize(){
  if(ctx||!Context)return ctx;
  try{
   ctx=new Context();
-  moves=ctx.createGain();
-  accent=ctx.createGain();
   master=ctx.createGain();
-  const compressor=ctx.createDynamicsCompressor();
-  compressor.threshold.value=-22;
-  compressor.knee.value=8;
-  compressor.ratio.value=2.5;
-  compressor.attack.value=.004;
-  compressor.release.value=.13;
   master.gain.value=0;
-  moves.connect(master);
-  accent.connect(master);
-  master.connect(compressor);
-  compressor.connect(ctx.destination);
+  master.connect(ctx.destination);
   for(const name of ['piece','capture']){
    fetch('sounds/'+name+'.wav')
     .then(response=>{if(!response.ok)throw Error('HTTP '+response.status);return response.arrayBuffer();})
@@ -60,7 +49,7 @@ function tap(kind,gain,rate,at){
   source.playbackRate.value=rate;
   volume.gain.value=gain;
   source.connect(volume);
-  volume.connect(moves);
+  volume.connect(master);
   source.start(at);
   source.onended=()=>{source.disconnect();volume.disconnect();};
   return;
@@ -74,7 +63,7 @@ function tap(kind,gain,rate,at){
  volume.gain.exponentialRampToValueAtTime(gain*.18,at+.004);
  volume.gain.exponentialRampToValueAtTime(.0001,at+.075);
  oscillator.connect(volume);
- volume.connect(moves);
+ volume.connect(master);
  oscillator.start(at);
  oscillator.stop(at+.08);
  oscillator.onended=()=>{oscillator.disconnect();volume.disconnect();};
@@ -87,18 +76,10 @@ function tone(hz,at,duration,gain){
  volume.gain.exponentialRampToValueAtTime(gain,at+.012);
  volume.gain.exponentialRampToValueAtTime(.0001,at+duration);
  oscillator.connect(volume);
- volume.connect(accent);
+ volume.connect(master);
  oscillator.start(at);
  oscillator.stop(at+duration+.015);
  oscillator.onended=()=>{oscillator.disconnect();volume.disconnect();};
-}
-function softenMoves(at,duration){
- // Leave room for information-rich cues without abruptly muting the board.
- const g=moves.gain;
- g.cancelScheduledValues(at);
- g.setValueAtTime(g.value,at);
- g.linearRampToValueAtTime(.7,at+.025);
- g.linearRampToValueAtTime(1,at+duration);
 }
 function play(type,{capture=false}={}){
  if(!enabled||!initialize())return;
@@ -123,25 +104,21 @@ function play(type,{capture=false}={}){
    break;
   case 'check':
    tap(base,strength*.82,rate,at);
-   softenMoves(at,.18);
    tone(698.46,at+.025,.11,.04);
    break;
   case 'promotion':
    tap(base,strength,rate,at);
-   softenMoves(at,.28);
    tone(587.33,at+.01,.13,.03);
    tone(783.99,at+.13,.2,.042);
    break;
   case 'checkmate':
    tap(base,strength,rate,at);
-   softenMoves(at,.5);
    tone(392,at+.035,.17,.039);
    tone(523.25,at+.16,.2,.042);
    tone(659.25,at+.3,.37,.045);
    break;
   case 'draw':
    tap(base,strength*.72,rate,at);
-   softenMoves(at,.24);
    tone(440,at+.035,.145,.027);
    tone(392,at+.145,.22,.024);
    break;
