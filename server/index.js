@@ -17,13 +17,22 @@ if (!MONGODB_URI || !SESSION_SECRET) {
 await mongoose.connect(MONGODB_URI);
 
 const app = express();
+const isProduction = process.env.NODE_ENV === 'production';
+if (isProduction) app.set('trust proxy', 1);
+
+// Keep health checks independent of sessions, and fail when MongoDB is disconnected.
+app.get('/healthz', (req, res) => {
+  const healthy = mongoose.connection.readyState === 1;
+  res.status(healthy ? 200 : 503).json({ status: healthy ? 'ok' : 'unavailable' });
+});
+
 app.use(express.json({ limit: '100kb' }));
 app.use(session({
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({ client: mongoose.connection.getClient() }),
-  cookie: { httpOnly: true, sameSite: 'lax', maxAge: 30 * 24 * 60 * 60 * 1000 },
+  cookie: { httpOnly: true, secure: isProduction, sameSite: 'lax', maxAge: 30 * 24 * 60 * 60 * 1000 },
 }));
 
 // Express 5 forwards errors from async handlers here.
