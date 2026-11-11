@@ -95,14 +95,6 @@
     return n < CUTS.length ? CUTS[n] : CUTS_AFTER;
   }
 
-  // "dark mode, i18n, ... password hashing" for the game-over card: the first two and the
-  // latest, because the escalation is the joke.
-  function cutSummary(cuts) {
-    if (cuts.length === 0) return '';
-    if (cuts.length <= 3) return cuts.join(', ');
-    return cuts[0] + ', ' + cuts[1] + ', \u2026 ' + cuts[cuts.length - 1];
-  }
-
   // Placing the block at `level` finishes a whole Mongo-Node-Express-React set.
   // Returns the release number it ships (1, 2, ...) or 0.
   function releaseAt(level) {
@@ -126,7 +118,7 @@
   const rules = {
     FIELD_W, START_W, PERFECT_PX, REGROW_PX, REGROW_AT, MIN_W,
     STACK, CUTS, RANKS,
-    blockFor, speedFor, drop, regrow, cutLabel, cutSummary, releaseAt, releaseLabel, rankFor, pick,
+    blockFor, speedFor, drop, regrow, cutLabel, releaseAt, releaseLabel, rankFor, pick,
   };
   if (typeof module === 'object' && module.exports) module.exports = rules;
   else window.MernStacker = rules;

@@ -15,10 +15,11 @@ export default function Home() {
     <main>
       <h1>Arcade</h1>
       {games === null ? <p>Loading…</p> : (
-        <ul>
+        <ul className="game-list">
           {games.map((g) => (
             <li key={g.slug}>
-              <Link to={`/play/${g.slug}${showDev ? '?dev=1' : ''}`}>{g.title}</Link> {g.description}
+              <Link to={`/play/${g.slug}${showDev ? '?dev=1' : ''}`}>{g.title}</Link>
+              <p>{g.description}</p>
             </li>
           ))}
         </ul>

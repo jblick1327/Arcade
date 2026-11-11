@@ -1,0 +1,81 @@
+/* Temporary site-wide basics. Individual games style their own iframes. */
+:root {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #24282c;
+  background: #fafafa;
+  font-synthesis: none;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+button, input { font: inherit; }
+a { color: inherit; text-underline-offset: 0.2em; }
+a:hover { color: #4b5563; }
+a:focus-visible, button:focus-visible, input:focus-visible {
+  outline: 2px solid #4b5563;
+  outline-offset: 2px;
+}
+
+.site-shell { max-width: 960px; margin: 0 auto; padding: 0 1.5rem; }
+.site-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 1.25rem 0;
+  border-bottom: 1px solid #dedede;
+}
+.brand { font-weight: 700; font-size: 1.125rem; text-decoration: none; }
+.nav-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; }
+.user-name { color: #666; }
+
+main { padding: 2rem 0 3rem; }
+h1 { font-size: 1.75rem; margin: 0 0 1rem; }
+h2 { font-size: 1.25rem; margin: 2rem 0 0.75rem; }
+p { line-height: 1.5; }
+
+.game-list { list-style: none; padding: 0; margin: 1.5rem 0 0; }
+.game-list li { padding: 1rem 0; border-bottom: 1px solid #dedede; }
+.game-list li:first-child { border-top: 1px solid #dedede; }
+.game-list li > a { font-weight: 600; }
+.game-list li p { margin: 0.3rem 0 0; color: #666; }
+
+form { max-width: 24rem; }
+form label { display: grid; gap: 0.4rem; }
+input {
+  width: 100%;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid #c9c9c9;
+  border-radius: 4px;
+  background: #fff;
+}
+button {
+  padding: 0.55rem 0.85rem;
+  border: 1px solid #24282c;
+  border-radius: 4px;
+  background: #24282c;
+  color: #fff;
+  cursor: pointer;
+}
+button:hover { background: #41464b; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+.quiet-button { background: transparent; color: #24282c; }
+.quiet-button:hover { background: #eee; }
+[role="alert"] { color: #b42318; }
+
+main > section { margin: 1.5rem 0; }
+.game-frame {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid #dedede;
+  background: #fff;
+}
+table { width: 100%; max-width: 36rem; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 0.65rem 0.5rem; border-bottom: 1px solid #dedede; }
+th { font-weight: 600; }
+@media (max-width: 600px) {
+  .site-shell { padding: 0 1rem; }
+  main { padding-top: 1.5rem; }
+}

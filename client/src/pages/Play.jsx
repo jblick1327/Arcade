@@ -183,6 +183,8 @@ export default function Play({ user }) {
         width={game.width}
         height={game.height}
         title={game.title}
+        className="game-frame"
+        style={{ aspectRatio: `${game.width} / ${game.height}` }}
       />
 
       {!user && <p>Log in to save your score.</p>}

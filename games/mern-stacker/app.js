@@ -24,7 +24,7 @@
   // ---------------------------------------------------------------- state
   let phase = 'intro';     // intro | playing | dying | over
   let blocks, mover, debris, popups, rings;
-  let score, combo, camY, shake, dyingFor, overSince, failMsg, failWhere, cuts, banner;
+  let score, combo, camY, shake, dyingFor, overSince, failMsg, cuts, banner;
   let best = 0;
   let runId = 0;
 
@@ -33,7 +33,7 @@
     debris = [];
     popups = [];
     rings = [];
-    cuts = [];
+    cuts = 0;
     banner = null;
     score = 0;
     combo = 0;
@@ -101,7 +101,6 @@
     if (!res.ok) {
       addDebris(res.cut, level, style, mover.dir);
       failMsg = R.pick(style.fail);
-      failWhere = style.name + ' layer crashed at tower.js:' + level;
       phase = 'dying';
       dyingFor = 0;
       shake = reduceMotion ? 0 : 10;
@@ -111,8 +110,7 @@
 
     if (res.cut) {
       addDebris(res.cut, level, style);
-      const label = R.cutLabel(cuts.length);
-      cuts.push(label);
+      const label = R.cutLabel(cuts++);
       popup('- ' + label, level, res.cut.x + res.cut.w / 2, '#ff7b72');
       Sfx.slice(res.cut.w / top.w);
     }
@@ -177,22 +175,18 @@
     best = Math.max(best, finalScore);
 
     $('fail-msg').textContent = failMsg;
-    $('fail-where').textContent = failWhere;
-    $('cut').textContent = cuts.length
-      ? 'Shipped without: ' + R.cutSummary(cuts) + (cuts.length > 3 ? ' (' + cuts.length + ' cuts)' : '')
-      : 'Shipped with zero scope cuts. Suspicious.';
     $('final').textContent = finalScore;
-    $('rank').textContent = 'Rank: ' + R.rankFor(finalScore);
+    $('rank').textContent = R.rankFor(finalScore);
     $('best').hidden = !(newBest && finalScore > 0);
-    $('status').textContent = finalScore > 0 ? 'Deploying score…' : 'Nothing was shipped.';
+    $('status').textContent = finalScore > 0 ? 'Saving score…' : '';
     $('board').replaceChildren();
     $('over').hidden = false;
 
     if (finalScore > 0) {
       const r = await Arcade.submitScore(finalScore);
       if (mine !== runId) return;
-      if (r.ok && r.offline) $('status').textContent = 'Offline mode: score not saved.';
-      else if (r.ok) $('status').textContent = 'Score deployed to the leaderboard.';
+      if (r.ok && r.offline) $('status').textContent = 'Offline: score not saved.';
+      else if (r.ok) $('status').textContent = 'Score saved.';
       else if (r.reason === 'guest') $('status').textContent = 'Log in to get on the leaderboard.';
       else $('status').textContent = 'Score not saved (' + r.reason + ').';
     }

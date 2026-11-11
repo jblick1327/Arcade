@@ -55,12 +55,10 @@ h2 { font-size: 1.125em; color: #ff7b72; font-weight: 600; max-width: 24ch; line
 .mini .n { width: 11.65em; background: var(--n); }
 .mini .m { width: 13.1em; background: var(--m); color: #fff; }
 
-.overlay .where { margin-top: -0.35em; font-size: 0.75em; color: var(--dim); }
 .big { font-size: 4em; line-height: 1; font-weight: 700; color: var(--r); }
 .big small { font-size: 0.21875em; color: var(--dim); font-weight: 400; }
 .rank { font-size: 0.9375em; color: var(--n); max-width: 28ch; text-wrap: balance; }
 .overlay .best { margin-top: -0.5em; font-size: 0.75em; color: #f2cc60; }
-.cut { font-size: 0.75em; color: #ff7b72; max-width: 34ch; line-height: 1.4; text-wrap: balance; }
 .status { font-size: 0.75em; color: var(--dim); min-height: 1.2em; }
 
 button {
