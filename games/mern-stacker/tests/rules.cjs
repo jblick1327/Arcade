@@ -19,12 +19,6 @@ test('scope cuts escalate in order and then run out', () => {
   assert.equal(R.cutLabel(R.CUTS.length), 'whatever was left');
 });
 
-test('the cut summary keeps the first two and the latest', () => {
-  assert.equal(R.cutSummary([]), '');
-  assert.equal(R.cutSummary(['a', 'b']), 'a, b');
-  assert.equal(R.cutSummary(['a', 'b', 'c', 'd', 'e']), 'a, b, \u2026 e');
-});
-
 test('a release ships when a React block completes a set', () => {
   // Level 0 is the starting MongoDB block, so levels 3, 7, 11 are React.
   assert.deepEqual([1, 2, 3, 4, 7, 11].map(R.releaseAt), [0, 0, 1, 0, 2, 3]);

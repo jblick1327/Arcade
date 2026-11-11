@@ -18,7 +18,6 @@ arcade/
   sdk/arcade.js         what games include
   games/
     _template/          the starter game
-    clicker/            example score game
     automate/  scarab-21/
   server/
     index.js            app setup, static serving, starts listening
