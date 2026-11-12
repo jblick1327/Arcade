@@ -1,0 +1,9 @@
+{
+  "title": "CROWNS & BONES",
+  "description": "Work in progress — player feedback welcome.",
+  "mode": "match",
+  "maxPlayers": 4,
+  "scoreOrder": "desc",
+  "width": 1220,
+  "height": 1180
+}
