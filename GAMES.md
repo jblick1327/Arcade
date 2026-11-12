@@ -88,9 +88,9 @@ Set `"mode": "match"` in `game.json`. Matches default to 2 players; add `"maxPla
 - A **match** is a shared piece of data: whose turn it is, a `state` object that you define (up to 64,000 characters of JSON), a version number, and who won. The site keeps it in the database and handles creating, listing and joining matches, so you only write the game.
 - Get the current match with `const { match } = await Arcade.ready()` or `Arcade.match.get()`. `match.you` is your seat, `0` or `1` (also `2` or `3` in four-player games), or `null` if you're only watching, and `match.turn` is whose move it is.
 - On your turn, save your move with `await Arcade.match.update({ state, turn: nextSeat })`. To end the game, add `result: { winner: 0 }` (or another player's seat index, or `null` for a draw).
-- Redraw your board when `Arcade.match.onChange(fn)` fires. It runs whenever the other player moves; the site checks for changes every second or two.
-- If both players act at once, the second write is rejected with `{ ok: false, reason: 'conflict' }` and the current match attached. Use that match and carry on.
+- Redraw your board when `Arcade.match.onChange(fn)` fires. It runs whenever another player moves; the site checks for changes every second or two.
+- If players act at once, a conflicting write is rejected with `{ ok: false, reason: 'conflict' }` and the current match attached. Use that match and carry on.
 
 The server doesn't know your game's rules: it checks that it's the sender's turn and the version matches, and nothing else. A determined player could cheat by sending the server a move your game would never allow. That's fine for a casual game. Automate is the exception, with its own checks in `server/automate.js`, because it's a competitive game. If you want that, talk to the maintainer first.
 
-To try a match you need the full site running (see the README) and two browsers or one normal and one private window, each logged in as a different user.
+To try a match you need the full site running (see the README) and a separate logged-in browser session for each player (two by default, or four with `"maxPlayers": 4`).
