@@ -35,7 +35,7 @@ router.get('/games/:slug/leaderboard', async (req, res) => {
   let rows;
   if (game.mode === 'match') {
     rows = await Match.aggregate([
-      { $match: { game: game.slug, status: 'done', winner: { $in: [0, 1] } } },
+      { $match: { game: game.slug, status: 'done', winner: { $in: [0, 1, 2, 3] } } },
       { $project: { winnerId: { $arrayElemAt: ['$players', '$winner'] }, updatedAt: 1 } },
       { $group: { _id: '$winnerId', score: { $sum: 1 }, at: { $max: '$updatedAt' } } },
       { $sort: { score: -1, at: 1 } },

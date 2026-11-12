@@ -62,13 +62,14 @@ router.post('/matches/:id/join', requireAuth, async (req, res) => {
   const m = await Match.findById(req.params.id);
   if (!m) return res.status(404).json({ error: 'Match not found' });
   if (m.players.some((p) => String(p) === req.userId)) return res.json(await present(m, req.userId));
-  if (m.players.length >= 2 || m.status !== 'waiting') return res.status(409).json({ error: 'Match is full' });
+  const maxPlayers = getGame(m.game)?.maxPlayers || 2;
+  if (m.players.length >= maxPlayers || m.status !== 'waiting') return res.status(409).json({ error: 'Match is full' });
   const upd = await Match.findOneAndUpdate(
-    { _id: m._id, status: 'waiting', 'players.1': { $exists: false } },
-    { $push: { players: req.userId }, $set: { status: 'active' }, $inc: { version: 1 } },
+    { _id: m._id, status: 'waiting', version: m.version, [`players.${maxPlayers - 1}`]: { $exists: false } },
+    { $push: { players: req.userId }, $set: { status: m.players.length + 1 === maxPlayers ? 'active' : 'waiting' }, $inc: { version: 1 } },
     { new: true },
   );
-  if (!upd) return res.status(409).json({ error: 'Match is full' });
+  if (!upd) return res.status(409).json({ error: 'Match changed, try joining again' });
   res.json(await present(upd, req.userId));
 });
 
@@ -120,12 +121,12 @@ router.put('/matches/:id', requireAuth, async (req, res) => {
     res.status(409).json({ error: 'Match changed, refresh', match: await present(doc, req.userId) });
   const current = matchState(m);
   if (m.status !== 'active' || idx !== current.turn || version !== m.version) return conflict(m);
-  if (turn !== 0 && turn !== 1) return res.status(400).json({ error: 'turn must be 0 or 1' });
+  if (!Number.isInteger(turn) || turn < 0 || turn >= m.players.length) return res.status(400).json({ error: 'turn must identify a player in the match' });
   if (state === undefined || JSON.stringify(state).length > 64000) {
     return res.status(400).json({ error: 'state missing or too large' });
   }
-  if (result != null && ![0, 1, null].includes(result.winner)) {
-    return res.status(400).json({ error: 'result.winner must be 0, 1 or null' });
+  if (result != null && ![null, ...m.players.map((_, i) => i)].includes(result.winner)) {
+    return res.status(400).json({ error: 'result.winner must identify a player or be null' });
   }
   const set = m.game === 'automate'
     ? validateAutomateUpdate(current.state, idx, { state, turn, result })

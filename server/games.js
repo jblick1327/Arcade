@@ -24,6 +24,7 @@ function load(slug) {
     title: typeof j.title === 'string' && j.title ? j.title : slug,
     description: typeof j.description === 'string' ? j.description : '',
     mode: j.mode === 'match' ? 'match' : 'score',
+    ...(j.mode === 'match' ? { maxPlayers: j.maxPlayers === 4 ? 4 : 2 } : {}),
     scoreOrder: j.scoreOrder === 'asc' ? 'asc' : 'desc',
     width: num(j.width, 800),
     height: num(j.height, 600),

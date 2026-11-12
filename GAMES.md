@@ -81,13 +81,13 @@ All changes reach `master` through a pull request.
 
 If you add tests for your game, put them in `games/<your-game>/tests/*.cjs` and `npm test` will pick them up.
 
-## Two-player games
+## Online multiplayer games
 
-Set `"mode": "match"` in `game.json`. `games/automate/` is the worked example; the full API is in the "Matches" section of `ARCHITECTURE.md`. The short version:
+Set `"mode": "match"` in `game.json`. Matches default to 2 players; add `"maxPlayers": 4` for four-player matches. `games/automate/` is the two-player worked example; the full API is in the "Matches" section of `ARCHITECTURE.md`. The short version:
 
 - A **match** is a shared piece of data: whose turn it is, a `state` object that you define (up to 64,000 characters of JSON), a version number, and who won. The site keeps it in the database and handles creating, listing and joining matches, so you only write the game.
-- Get the current match with `const { match } = await Arcade.ready()` or `Arcade.match.get()`. `match.you` is your seat, `0` or `1`, or `null` if you're only watching, and `match.turn` is whose move it is.
-- On your turn, save your move with `await Arcade.match.update({ state, turn: nextSeat })`. To end the game, add `result: { winner: 0 }` (or `1`, or `null` for a draw).
+- Get the current match with `const { match } = await Arcade.ready()` or `Arcade.match.get()`. `match.you` is your seat, `0` or `1` (also `2` or `3` in four-player games), or `null` if you're only watching, and `match.turn` is whose move it is.
+- On your turn, save your move with `await Arcade.match.update({ state, turn: nextSeat })`. To end the game, add `result: { winner: 0 }` (or another player's seat index, or `null` for a draw).
 - Redraw your board when `Arcade.match.onChange(fn)` fires. It runs whenever the other player moves; the site checks for changes every second or two.
 - If both players act at once, the second write is rejected with `{ ok: false, reason: 'conflict' }` and the current match attached. Use that match and carry on.
 
