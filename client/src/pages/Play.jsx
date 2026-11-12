@@ -9,11 +9,14 @@ function inviteUrl() {
   return url.href;
 }
 
-function statusLine(m, showDev) {
-  if (m.status === 'waiting') return `Waiting for an opponent. Send them this link: ${showDev ? inviteUrl() : window.location.href}`;
-  const [a, b] = m.players.map((p) => p.name);
-  if (m.status === 'done') return `${a} vs ${b} — ${m.winner === null ? 'draw' : m.players[m.winner].name + ' won'}`;
-  return `${a} vs ${b} — in progress`;
+function statusLine(m, showDev, maxPlayers) {
+  const link = showDev ? inviteUrl() : window.location.href;
+  if (m.status === 'waiting') return maxPlayers === 4
+    ? `Waiting for players (${m.players.length}/4). Send them this link: ${link}`
+    : `Waiting for an opponent. Send them this link: ${link}`;
+  const players = m.players.map((p) => p.name).join(' vs ');
+  if (m.status === 'done') return `${players} — ${m.winner === null ? 'draw' : m.players[m.winner].name + ' won'}`;
+  return `${players} — in progress`;
 }
 
 /** An active Automate match whose legacy draft the current rules cannot continue. */
@@ -143,7 +146,7 @@ export default function Play({ user }) {
           <ul>
             {lobby.map((m) => (
               <li key={m.id}>
-                {m.players[0].name}{' '}
+                {m.players[0].name}{game.maxPlayers === 4 ? ` (${m.players.length}/4 players)` : ''}{' '}
                 {needsRestart(m) && <span>Draft needs restart. </span>}
                 {user && (m.you !== null
                   ? needsRestart(m)
@@ -158,7 +161,7 @@ export default function Play({ user }) {
 
       {isMatchGame && matchId && (
         <section>
-          <p>{match ? statusLine(match, showAutomateDev) : 'Loading match…'}</p>
+          <p>{match ? statusLine(match, showAutomateDev, game.maxPlayers) : 'Loading match…'}</p>
           {needsRestart(match) && (
             <p>This saved draft cannot continue under the new placement rules.{' '}
               {inMatch

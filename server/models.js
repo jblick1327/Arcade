@@ -21,9 +21,9 @@ const matchSchema = new Schema({
   game: { type: String, required: true },
   players: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   status: { type: String, enum: ['waiting', 'active', 'done'], default: 'waiting' },
-  turn: { type: Number, enum: [0, 1], default: 0 },
+  turn: { type: Number, enum: [0, 1, 2, 3], default: 0 },
   state: { type: Schema.Types.Mixed, default: null },
-  winner: { type: Number, enum: [0, 1, null], default: null },
+  winner: { type: Number, enum: [0, 1, 2, 3, null], default: null },
   version: { type: Number, default: 0 },
 }, { timestamps: true, minimize: false });
 matchSchema.index({ game: 1, status: 1 });

@@ -117,7 +117,8 @@
     get: function () { return ctx.match; },
 
     /** Write the match. patch = { state, turn, result? }.
-     *  turn: 0 or 1 = whose move is next.  result: { winner: 0 | 1 | null } ends the match (null = draw).
+     *  turn: next player's seat (0–1, or 0–3 for a four-player game).
+     *  result: { winner: seat index | null } ends the match (null = draw).
      *  Resolves { ok:true, match } or { ok:false, reason, match? } ('conflict' = someone wrote first;
      *  the returned match is the current one). */
     update: function (patch) {
@@ -132,7 +133,7 @@
       });
     },
 
-    /** fn(match) runs whenever the OTHER side (or the server) changes the match. Returns an unsubscribe function. */
+    /** fn(match) runs whenever another player (or the server) changes the match. Returns an unsubscribe function. */
     onChange: function (fn) {
       listeners.push(fn);
       return function () {

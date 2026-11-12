@@ -1,6 +1,6 @@
 # Arcade — architecture
 
-How the site, the API and the SDK fit together. **You don't need this to add a game:** start with [GAMES.md](GAMES.md). Read this when you change the server, the client or the SDK, or when you build a two-player game.
+How the site, the API and the SDK fit together. **You don't need this to add a game:** start with [GAMES.md](GAMES.md). Read this when you change the server, the client or the SDK, or when you build an online multiplayer game.
 
 A small MERN site that hosts web games made by a group of classmates. Players log in, play, and their scores are recorded. One game (Automate) is two-player online.
 
@@ -66,6 +66,7 @@ On each request to the games endpoints, read the `games/` directory (no caching,
 | `title` | string | the folder name |
 | `description` | string | `""` |
 | `mode` | `"score"` or `"match"` | `"score"` |
+| `maxPlayers` | `2` or `4` (match games only) | `2` |
 | `scoreOrder` | `"desc"` or `"asc"` | `"desc"` |
 | `width`, `height` | number | 800, 600 |
 
@@ -76,8 +77,8 @@ A folder with a broken `game.json` is skipped and logged with `console.warn`; it
 ```
 User   { name, nameLower (unique index), passwordHash, createdAt }
 Score  { user: ObjectId, game: slug string, score: Number, meta: Mixed, createdAt }      index { game, score }
-Match  { game: slug string, players: [ObjectId] (1 or 2), status: 'waiting'|'active'|'done',
-         turn: 0|1, state: Mixed (default null), winner: 0|1|null, version: Number (default 0),
+Match  { game: slug string, players: [ObjectId] (1 to maxPlayers, max 4), status: 'waiting'|'active'|'done',
+         turn: 0|1|2|3, state: Mixed (default null), winner: 0|1|2|3|null, version: Number (default 0),
          createdAt, updatedAt }                                                         index { game, status }
 ```
 
@@ -114,7 +115,7 @@ Leaderboard rules (limit clamped to 1–100):
 
 A match is a shared JSON blob with a version number and a turn. The server does not know any game's rules, except Automate's (see below).
 
-The match object returned everywhere:
+The match object returned everywhere (two-player Automate example; four-player matches include up to four entries in `players`):
 
 ```json
 {
@@ -125,13 +126,13 @@ The match object returned everywhere:
 }
 ```
 
-`you` is the requester's index in `players` (0 or 1), or `null` for spectators and guests. `players[0]` is always the creator.
+`you` is the requester's index in `players` (0–1 for two-player games, 0–3 for four-player games), or `null` for spectators and guests. `players[0]` is always the creator.
 
 | Request | Success | Errors |
 |---|---|---|
 | `GET /api/games/:slug/matches` | `200 [match, ...]` — `waiting` matches, plus `active` matches the requester is in; newest first, max 50 | `404` |
 | `POST /api/games/:slug/matches` (auth) | `201 match` — `players: [me]`, `waiting`, `turn 0`, `state null`, `version 0` | `404`; `400` if the game's mode is not `match` |
-| `POST /api/matches/:id/join` (auth) | `200 match` — adds me as `players[1]`, `status: active`, `version + 1`. If I am already in the match, return it unchanged. | `404`; `409` already has two players |
+| `POST /api/matches/:id/join` (auth) | `200 match` — adds me in the next seat, `version + 1`; stays `waiting` until `maxPlayers` joins, then becomes `active`. If already joined, return unchanged. | `404`; `409` full or concurrent join conflict |
 | `GET /api/matches/:id` | `200 match` (no auth needed) | `404` |
 | `PUT /api/matches/:id` `{version, state, turn, result?}` (auth) | `200 match` | see below |
 | `POST /api/matches/:id/restart-draft` `{version}` (auth) | `200 match` — Automate only: resets an active draft that the current rules cannot continue (`state.restartRequired`) to an empty draft, `version + 1`. Either player may call it. | `404`; `403` not a player; `409 {error, match}` if `version` is stale or the match is not a restartable Automate draft |
@@ -140,13 +141,13 @@ The match object returned everywhere:
 
 1. `404` if the match does not exist. `403` if the requester is not one of the players.
 2. `409 {error, match}` (including the current match object) if `status` is not `active`, or the requester's index is not `match.turn`, or `version` does not equal `match.version`.
-3. `400` if `turn` is not 0 or 1, if `state` serialises to more than 64,000 characters, or if `result` is present and `result.winner` is not `0`, `1` or `null`.
+3. `400` if `turn` is not an occupied player seat (0 through `players.length - 1`), if `state` serialises to more than 64,000 characters, or if `result` is present and `result.winner` is not an occupied seat or `null`.
 4. For `automate` matches, the update must also pass `validateAutomateUpdate` in `server/automate.js` (one legal placement or move at a time; the result is computed from the position), otherwise `400`.
 5. Otherwise store `state` and `turn`, add 1 to `version`. If `result` is present, also set `winner` and `status: 'done'`.
 
 For Automate, saved drafts from older rule versions are checked when a match is read; if the current rules cannot continue one, its `state` is returned as `{ restartRequired: true, … }` and only `restart-draft` can change it.
 
-Make the write atomic: `findOneAndUpdate` filtered on `_id`, `version`, `status: 'active'`; if it matches nothing, answer `409` with the current match. Join is atomic the same way (filter on `status: 'waiting'`).
+Make the write atomic: `findOneAndUpdate` filtered on `_id`, `version`, `status: 'active'`; if it matches nothing, answer `409` with the current match. Join also filters on `status: 'waiting'` and `version`, preventing concurrent joins from overfilling a lobby.
 
 ## Client
 
@@ -169,7 +170,7 @@ Four routes with `react-router-dom`. `App.jsx` fetches `/api/me` once, keeps `us
 Lobby for `match` games. The current match comes from the `?match=<id>` query parameter.
 
 - No `match` parameter: the iframe runs the game in local mode. Above it show a "New online match" button (guests see "Log in to play online" instead) and a list of matches from `GET /api/games/:slug/matches`, each with the host's name and a "Join" button (or "Resume" for the requester's own). Refresh the list every 5 seconds. New match → `POST`, then navigate to `?match=<id>`. Join → `POST …/join`, then navigate.
-- With a `match` parameter: show one status line driven by the bridge's `onMatch` callback — "Waiting for an opponent. Send them this link: `<current URL>`", "ann vs bob — in progress", or "ann vs bob — bob won" / "draw". If the user is logged in, not in the match, and it is `waiting`, show a "Join this match" button. Always show a "Leave" link back to `/play/<slug>`. For an Automate match that needs a restart, show a "Restart draft" button (in the lobby list and on the match page).
+- With a `match` parameter: show one status line driven by the bridge's `onMatch` callback — for two-player games, "Waiting for an opponent" or "ann vs bob — in progress"; for four-player games, waiting displays the occupied seat count (e.g. "2/4") and active matches list all players. A finished match displays the winner or "draw". If the user is logged in, not in the match, and it is `waiting`, show a "Join this match" button. Always show a "Leave" link back to `/play/<slug>`. For an Automate match that needs a restart, show a "Restart draft" button (in the lobby list and on the match page).
 
 **Dev shortcuts** — in `vite` dev mode only, `?dev=1` on the home or play page adds an iframe reload button and, on a waiting Automate match, a "Copy invite link" button. They are not in production builds.
 
