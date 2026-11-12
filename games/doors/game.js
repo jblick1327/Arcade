@@ -275,8 +275,11 @@ if (typeof document !== "undefined") (async function mount() {
   }
   globalThis.drawDoor = draw;
   function resize() {
-    const controls = paletteTray.getBoundingClientRect().height + 14;
-    const fit = Math.max(0.1, Math.min(innerWidth / 160, (innerHeight - controls - 12) / 144));
+    // Reserve space for the collapsed toggle, not the open drawer: opening
+    // palettes must not make the game suddenly shrink while previewing colors.
+    const toggle = document.querySelector('#palette-controls > summary');
+    const controls = (toggle?.getBoundingClientRect().height || 42) + 12 + 32;
+    const fit = Math.max(0.1, Math.min((innerWidth - 16) / 160, (innerHeight - controls) / 144));
     const scale = fit >= 1 ? Math.floor(fit) : fit;
     canvas.style.width = 160 * scale + "px";
     canvas.style.height = 144 * scale + "px";
@@ -284,7 +287,7 @@ if (typeof document !== "undefined") (async function mount() {
   addEventListener("resize", resize); resize();
   const keys = new Set(["KeyA", "KeyZ", "Space"]);
   addEventListener("keydown", event => {
-    if (event.target?.closest?.(".palette-picker")) return;
+    if (event.target?.closest?.(".palette-controls")) return;
     if (!keys.has(event.code)) return;
     event.preventDefault();
     sound.unlock();
@@ -293,7 +296,7 @@ if (typeof document !== "undefined") (async function mount() {
   addEventListener("keyup", event => {
     if (keys.has(event.code)) {
       game.inputDown = false;
-      if (!event.target?.closest?.(".palette-picker")) event.preventDefault();
+      if (!event.target?.closest?.(".palette-controls")) event.preventDefault();
     }
   });
   canvas.addEventListener("pointerdown", event => {

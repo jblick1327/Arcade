@@ -1,8 +1,15 @@
 # Doors
 
 Wait through Fibonacci countdowns and pass through endless doors. Press A, Z or
-Space, or tap the game. The unlabeled squares below the screen select 32 tints,
-including four slow animated palettes. Audio starts on the first game input.
+Space, or tap the game. The game is shown at a larger integer pixel scale in a
+wider Arcade frame. Open the **Palettes** drawer below the screen to choose from
+37 color schemes: 28 still tints followed by nine animated options, separated
+by a thin rule (no visible section labels). Animated swatches preview their
+motion while the drawer is open. The five new animations add independent
+interference, breathing luminance, stepped signal colors, and subtle spatial
+warping on selected effects. When reduced motion is preferred, every palette
+stays fixed and distortion is disabled. The selected palette is saved locally.
+Audio starts on the first game input.
 
 The leaderboard score is the starting number of the highest door actually
 passed through. The initial free door starts at 0. Opening animation completion
