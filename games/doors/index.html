@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="theme-color" content="#000000">
+<title>Door</title>
+<style>
+  * { box-sizing: border-box }
+  html, body { margin: 0; width: 100%; height: 100%; background: #000; overflow: hidden }
+  body { display: grid; place-items: center }
+  main { display: flex; flex-direction: column; align-items: center; gap: 14px }
+  canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; touch-action: none; outline: none }
+  .palette-picker { display: grid; grid-template-columns: repeat(16, 1fr); gap: 6px; width: min(442px, calc(100vw - 24px)) }
+  .palette-swatch { display: block; width: 100%; aspect-ratio: 1; padding: 0; border: 1px solid #ffffff40; border-radius: 2px; cursor: pointer; touch-action: manipulation }
+  .palette-swatch[aria-pressed="true"] { outline: 2px solid #fff; outline-offset: 2px }
+  .palette-swatch:focus-visible { outline: 2px solid #fff; outline-offset: 2px }
+  @media (max-width: 500px) { .palette-picker { grid-template-columns: repeat(8, 1fr); width: min(218px, calc(100vw - 24px)) } }
+</style>
+<main>
+<canvas id="screen" width="160" height="144" tabindex="0" aria-label="Door. Press A, Z, or Space, or tap the screen to open the door."></canvas>
+<div id="palettes"></div>
+</main>
+<script src="visual-data.js"></script>
+<script src="audio-data.js"></script>
+<script src="audio.js"></script>
+<script src="palettes.js"></script>
+<script src="/sdk/arcade.js"></script>
+<script src="arcade.js"></script>
+<script src="game.js"></script>
+</html>

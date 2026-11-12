@@ -1,0 +1,8 @@
+{
+  "title": "Doors",
+  "description": "Wait through Fibonacci countdowns, changing tunings and endless doors. Your score is the starting count of the highest door you pass through.",
+  "mode": "score",
+  "scoreOrder": "desc",
+  "width": 480,
+  "height": 576
+}
