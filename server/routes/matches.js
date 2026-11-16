@@ -73,6 +73,26 @@ router.post('/matches/:id/join', requireAuth, async (req, res) => {
   res.json(await present(upd, req.userId));
 });
 
+/** A creator may cancel their waiting match only before anyone has joined. */
+router.delete('/matches/:id', requireAuth, async (req, res) => {
+  if (!validId(req.params.id)) return res.status(404).json({ error: 'Match not found' });
+  const m = await Match.findById(req.params.id);
+  if (!m) return res.status(404).json({ error: 'Match not found' });
+  if (String(m.players[0]) !== req.userId) {
+    return res.status(403).json({ error: 'Only the creator can cancel this match' });
+  }
+  if (m.status !== 'waiting' || m.players.length !== 1) {
+    return res.status(409).json({ error: 'Only unjoined waiting matches can be cancelled' });
+  }
+  // The conditions prevent deleting a match if another player joins concurrently.
+  const deleted = await Match.findOneAndDelete({
+    _id: m._id, status: 'waiting', version: m.version,
+    'players.0': req.userId, 'players.1': { $exists: false },
+  });
+  if (!deleted) return res.status(409).json({ error: 'Match changed, refresh' });
+  res.status(204).end();
+});
+
 /** Either participant can reset a legacy draft that current rules cannot continue. */
 router.post('/matches/:id/restart-draft', requireAuth, async (req, res) => {
   if (!validId(req.params.id)) return res.status(404).json({ error: 'Match not found' });
