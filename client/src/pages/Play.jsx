@@ -52,6 +52,8 @@ export default function Play({ user }) {
   const [reloadCount, setReloadCount] = useState(0);
   const [restarting, setRestarting] = useState(false);
   const [restartError, setRestartError] = useState('');
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState('');
   const iframeRef = useRef(null);
 
   useEffect(() => {
@@ -67,7 +69,7 @@ export default function Play({ user }) {
   useEffect(() => { loadBoard(); }, [loadBoard]);
 
   // A restart error belongs to the view it happened in.
-  useEffect(() => { setRestartError(''); }, [slug, matchId]);
+  useEffect(() => { setRestartError(''); setCancelError(''); }, [slug, matchId]);
 
   useEffect(() => {
     setMatch(null);
@@ -129,15 +131,31 @@ export default function Play({ user }) {
     }
   }
 
+  async function cancelMatch(m) {
+    if (!window.confirm('Cancel this waiting match?')) return;
+    setCancelError('');
+    setCancelling(true);
+    const r = await api('DELETE', `/matches/${m.id}`);
+    setCancelling(false);
+    if (r.status === 204) {
+      navigate(`/play/${slug}${showDev ? '?dev=1' : ''}`);
+    } else {
+      setCancelError(r.data?.error || 'Could not cancel match. Please try again.');
+    }
+  }
+
   if (game === null) return <p>Loading…</p>;
   if (game === false) return <p>Game not found</p>;
 
   const inMatch = match && match.you !== null;
+  const canCancel = user && match?.status === 'waiting'
+    && match.players.length === 1 && match.players[0].id === user.id;
 
   return (
     <main>
       <h1>{game.title}</h1>
       {restartError && <p role="alert">{restartError}</p>}
+      {cancelError && <p role="alert">{cancelError}</p>}
 
       {isMatchGame && !matchId && (
         <section>
@@ -172,6 +190,9 @@ export default function Play({ user }) {
           {showAutomateDev && inMatch && match.status === 'waiting' && <CopyInvite key={matchId} />}
           {user && match && !inMatch && match.status === 'waiting' && (
             <p><button type="button" onClick={() => join(matchId)}>Join this match</button></p>
+          )}
+          {canCancel && (
+            <p><button type="button" disabled={cancelling} onClick={() => cancelMatch(match)}>Cancel match</button></p>
           )}
           <p><Link to={`/play/${slug}${showDev ? '?dev=1' : ''}`}>Leave</Link></p>
         </section>

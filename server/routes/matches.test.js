@@ -14,7 +14,10 @@ const fourDir = `games/${fourSlug}`;
 let docs;
 const clone = (doc) => ({ ...doc, players: [...doc.players], state: structuredClone(doc.state) });
 const matches = (doc, filter) => Object.entries(filter).every(([k, v]) => {
-  if (k.startsWith('players.')) return (Number(k.slice(8)) < doc.players.length) === v.$exists;
+  if (k.startsWith('players.')) {
+    const player = doc.players[Number(k.slice(8))];
+    return v?.$exists !== undefined ? (player !== undefined) === v.$exists : String(player) === String(v);
+  }
   return String(doc[k]) === String(v);
 });
 
@@ -25,6 +28,12 @@ Match.findOneAndUpdate = async (filter, update) => {
   Object.assign(doc, update.$set);
   if (update.$push?.players) doc.players.push(update.$push.players);
   for (const [k, n] of Object.entries(update.$inc || {})) doc[k] += n;
+  return clone(doc);
+};
+Match.findOneAndDelete = async (filter) => {
+  const doc = docs.get(String(filter._id));
+  if (!doc || !matches(doc, filter)) return null;
+  docs.delete(String(doc._id));
   return clone(doc);
 };
 Match.create = async (fields) => {
@@ -44,6 +53,10 @@ function legacyDraft() {
 function put(id, fields) {
   docs.set(String(id), { _id: id, game: 'automate', players: [ids.a, ids.b], status: 'active',
     turn: 0, state: legacyDraft(), winner: null, version: 3, ...fields });
+}
+
+function waiting(id, fields = {}) {
+  put(id, { status: 'waiting', players: [ids.a], state: null, ...fields });
 }
 
 let server;
@@ -140,8 +153,55 @@ async function request(method, path, body) {
     method, headers: { 'Content-Type': 'application/json' },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
-  return { status: r.status, data: await r.json() };
+  return { status: r.status, data: r.status === 204 ? null : await r.json() };
 }
+
+test('creator can cancel a waiting match with no opponent', async () => {
+  const id = new mongoose.Types.ObjectId();
+  waiting(id);
+  const r = await request('DELETE', `/matches/${id}`);
+  assert.equal(r.status, 204);
+  assert.equal(docs.has(String(id)), false);
+});
+
+test('cancel requires login and creator ownership', async () => {
+  const id = new mongoose.Types.ObjectId();
+  waiting(id);
+  as = null;
+  assert.equal((await request('DELETE', `/matches/${id}`)).status, 401);
+  as = ids.b;
+  assert.equal((await request('DELETE', `/matches/${id}`)).status, 403);
+  as = ids.a;
+  assert.equal((await request('DELETE', '/matches/invalid-id')).status, 404);
+  assert.equal((await request('DELETE', `/matches/${new mongoose.Types.ObjectId()}`)).status, 404);
+  assert.equal(docs.has(String(id)), true);
+});
+
+test('joined, active and completed matches cannot be cancelled', async () => {
+  const id = new mongoose.Types.ObjectId();
+  for (const fields of [{ players: [ids.a, ids.b] }, { status: 'active' }, { status: 'done' }]) {
+    waiting(id, fields);
+    assert.equal((await request('DELETE', `/matches/${id}`)).status, 409);
+    assert.equal(docs.has(String(id)), true);
+  }
+});
+
+test('cancel is atomic against a simultaneous join', async () => {
+  const id = new mongoose.Types.ObjectId();
+  waiting(id);
+  const original = Match.findOneAndDelete;
+  Match.findOneAndDelete = async () => {
+    docs.get(String(id)).players.push(ids.b);
+    docs.get(String(id)).version += 1;
+    return null;
+  };
+  try {
+    assert.equal((await request('DELETE', `/matches/${id}`)).status, 409);
+    assert.equal(docs.get(String(id)).players.length, 2);
+  } finally {
+    Match.findOneAndDelete = original;
+  }
+});
 
 test('four-player matches wait for all seats and accept turns and winners 2 and 3', async () => {
   const created = await request('POST', `/games/${fourSlug}/matches`);
