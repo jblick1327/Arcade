@@ -54,3 +54,7 @@ Everything goes through pull requests into `master`; please don't push to it dir
 
 - No extra dependencies beyond those listed in `ARCHITECTURE.md`. `games/package.json` only marks game files as CommonJS so Automate's Node tests can `require` them despite the root `"type": "module"`.
 - Tests: `npm test` runs `server/**/*.test.js` and each game's `tests/*.cjs`. A game's tests can also be run alone, e.g. `node --test games/scarab-21/tests/rules.cjs`. CI (`.github/workflows/ci.yml`) runs the tests, the build and a high-severity `npm audit` on every push and pull request.
+
+## Project demo
+
+[Watch the Reachnid Arcade demonstration (5:39)](Reachnid_Demo.mp4)
