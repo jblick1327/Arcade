@@ -1,5 +1,8 @@
 name: Record COMP229 demo (temporary)
 on:
+  push:
+    branches:
+      - demo/capture-partb-live
   pull_request:
     paths:
       - 'demo/**'
