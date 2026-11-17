@@ -1,3 +1,5 @@
+https://github.com/user-attachments/assets/3b82cf3b-05ee-453c-82a3-95c21cf3db77
+
 # Arcade
 
 A small MERN site that hosts web games made by classmates. Players log in, play, and their scores are recorded. Automate is two-player online.
