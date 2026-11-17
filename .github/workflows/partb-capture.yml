@@ -1,0 +1,62 @@
+name: Record COMP229 demo (temporary)
+on:
+  pull_request:
+    paths:
+      - 'demo/**'
+      - '.github/workflows/partb-capture.yml'
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ping:1}).ok'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      MONGODB_URI: mongodb://127.0.0.1:27017/arcade
+      SESSION_SECRET: local-ci-demonstration-secret
+      PORT: '3000'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Install browser tooling for recording only
+        run: |
+          npm install --no-save --package-lock=false playwright@1.57.0
+          npx playwright install --with-deps chromium
+      - name: Start full MERN app
+        run: |
+          (npm run dev > /tmp/arcade-dev.log 2>&1 &)
+          for i in $(seq 1 90); do
+            if curl -fsS http://127.0.0.1:3000/healthz && curl -fsS http://127.0.0.1:5173/ >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat /tmp/arcade-dev.log
+          exit 1
+      - name: Capture browser interactions and API/database evidence
+        run: node demo/record.mjs
+      - name: Run repository tests
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p demo/out
+          set -o pipefail
+          npm test 2>&1 | tee demo/out/npm-test.txt
+      - name: Archive real recordings and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arcade-live-browser-demo
+          path: |
+            demo/out/**
+            /tmp/arcade-dev.log
+          if-no-files-found: warn
