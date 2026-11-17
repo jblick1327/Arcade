@@ -7,7 +7,7 @@ import Army from '../games/automate/setup.js';
 const output = 'demo/out'; mkdirSync(output,{recursive:true});
 const browser=await chromium.launch();
 const eventLog=[], apiLog=[];
-const base='http://127.0.0.1:5173', apiBase='http://127.0.0.1:3000';
+const base='http://localhost:5173', apiBase='http://127.0.0.1:3000';
 const userA='demoA'+Date.now().toString().slice(-7), userB='demoB'+Date.now().toString().slice(-7);
 const pass='demo-password-123';
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
