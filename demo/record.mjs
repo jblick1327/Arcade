@@ -58,6 +58,7 @@ try {
  await a.getByRole('button',{name:'Cancel match'}).click();
  await a.getByRole('button',{name:'New online match'}).waitFor();await capture(a,'09-cancelled',1300);
  await a.getByRole('button',{name:'New online match'}).click();
+ await a.waitForURL(/\\?match=/);
  const invite=a.url();await capture(a,'10-match-invite',1600);
  bCtx=await context();const b=await bCtx.newPage();await formRegister(b,userB);
  await b.goto(invite);await b.getByRole('button',{name:'Join this match'}).click();
