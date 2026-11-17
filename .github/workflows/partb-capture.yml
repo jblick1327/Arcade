@@ -47,6 +47,22 @@ jobs:
           exit 1
       - name: Capture browser interactions and API/database evidence
         run: node demo/record.mjs
+      - name: Inspect MongoDB with mongosh
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p demo/out
+          container=$(docker ps -q --filter ancestor=mongo:7 | head -n 1)
+          if [ -n "$container" ]; then
+            docker exec "$container" mongosh --quiet arcade --eval '
+              print("USERS");
+              db.users.find({name:{$regex:"^(demo|api)"}},{name:1,_id:0}).limit(10).forEach(printjson);
+              print("SCORES");
+              db.scores.find({game:"scarab-21"},{game:1,score:1,user:1,_id:0}).limit(10).forEach(printjson);
+              print("MATCHES");
+              db.matches.find({game:"automate"},{game:1,status:1,turn:1,version:1,players:1,_id:0}).limit(10).forEach(printjson);
+            ' | tee demo/out/mongosh.txt
+          fi
       - name: Run repository tests
         if: always()
         shell: bash
