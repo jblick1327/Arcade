@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Link, Route, Routes } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
 import { api } from './api.js';
+import Navbar from './components/Navbar.jsx';
 import Home from './pages/Home.jsx';
 import Play from './pages/Play.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
+import About from './pages/About.jsx';
+import Contact from './pages/Contact.jsx';
 
 export default function App() {
   const [user, setUser] = useState(undefined); // undefined = still loading
@@ -22,27 +25,14 @@ export default function App() {
 
   return (
     <div className="site-shell">
-      <nav className="site-nav" aria-label="Main navigation">
-        <Link className="brand" to="/">Arcade</Link>
-        <div className="nav-actions">
-          {user ? (
-            <>
-              <span className="user-name">{user.name}</span>
-              <button className="quiet-button" type="button" onClick={logout}>Log out</button>
-            </>
-          ) : (
-            <>
-              <Link to="/login">Log in</Link>
-              <Link to="/register">Register</Link>
-            </>
-          )}
-        </div>
-      </nav>
+      <Navbar user={user} onLogout={logout} />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login setUser={setUser} />} />
         <Route path="/register" element={<Register setUser={setUser} />} />
         <Route path="/play/:slug" element={<Play user={user} />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/contact" element={<Contact />} />
         <Route path="*" element={<main><p>Page not found</p></main>} />
       </Routes>
     </div>
