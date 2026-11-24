@@ -4,6 +4,7 @@
 
 // A game is any folder games/<slug>/ that has an index.html and a game.json.
 // Games are re-read on every request, so adding a folder needs no server restart.
+// A game may also ship an optional server.js hook that the match controller calls (see GAMES.md).
 
 //=============================================================
 //                          IMPORTS
@@ -12,6 +13,7 @@
 // import node's file system & path helpers
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 //=============================================================
 //                         SETTINGS
@@ -23,9 +25,15 @@ const GAMES_DIR = path.resolve('games');
 // valid folder names - folders starting with "_" (like _template) are never listed
 const SLUG = /^[a-z0-9][a-z0-9-]*$/;
 
+// cover image a game may put beside its index.html (first one found is used)
+const THUMBNAILS = ['thumbnail.svg', 'thumbnail.png', 'thumbnail.jpg', 'thumbnail.webp'];
+
 // iframe size used when game.json does not give one
 const DEFAULT_WIDTH = 800;
 const DEFAULT_HEIGHT = 600;
+
+// server.js hooks already loaded, keyed by file path
+const hooks = new Map();
 
 //=============================================================
 //                          HELPERS
@@ -58,6 +66,9 @@ function load(slug) {
     return null;
   }
 
+  // the game's cover image, if it has one
+  const thumbnail = THUMBNAILS.find((f) => fs.existsSync(path.join(dir, f)));
+
   // fill in safe defaults for anything missing or invalid
   return {
     slug,
@@ -68,6 +79,7 @@ function load(slug) {
     scoreOrder: meta.scoreOrder === 'asc' ? 'asc' : 'desc',
     width: positive(meta.width, DEFAULT_WIDTH),
     height: positive(meta.height, DEFAULT_HEIGHT),
+    thumbnail: thumbnail ? `/games/${slug}/${thumbnail}` : null,
   };
 }
 
@@ -96,4 +108,21 @@ export function listGames() {
     .map(load)
     .filter(Boolean)
     .sort((a, b) => a.title.localeCompare(b.title));
+}
+
+// get a game's optional server.js hook, or null when it has none
+// a hook that exists but fails to load throws, so its checks are never silently skipped
+export async function getGameServer(slug) {
+  slug = String(slug);
+  if (!SLUG.test(slug)) return null;
+  const file = path.join(GAMES_DIR, slug, 'server.js');
+  if (!fs.existsSync(file)) return null;
+
+  // load it once and reuse it (forget a failed load so the next request tries again)
+  if (!hooks.has(file)) {
+    const loading = import(pathToFileURL(file).href).then((mod) => mod.default ?? mod);
+    loading.catch(() => hooks.delete(file));
+    hooks.set(file, loading);
+  }
+  return hooks.get(file);
 }

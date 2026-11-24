@@ -1,0 +1,447 @@
+/*
+  reachnid.css - REACHNID design: nav bar, About and Contact pages, light/dark colours
+  Author: Reachnid Group
+  Centennial College - Fall 2026
+
+  Import AFTER site.css in main.jsx. Every class starts with "rn-" so nothing clashes with
+  site.css. Sizes use "u" units measured off the design mockup (390u wide): each .rn-root is a
+  size container, so 1u = its own width / 390 and the layout keeps the mockup's proportions.
+*/
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+/*=============================================================
+                       THEME COLOURS
+=============================================================*/
+:root,
+html[data-theme='light'] {
+  --rn-bg: #f5f5fe;
+  --rn-text: #0b0a2e;
+  --rn-para: #3b3a62;
+  --rn-link: #1f1d40;
+  --rn-card-bg: #f9f8fd;
+  --rn-card-border: #dedbf0;
+  --rn-card-shadow: 0 2px 6px rgba(60, 40, 140, 0.07);
+  --rn-avatar-bg: radial-gradient(circle at 50% 40%, #e8deff 0%, #d8ccfe 70%, #d1c3fd 100%);
+  --rn-avatar-text: #5b16ec;
+  --rn-avatar-glow: none;
+  --rn-input-bg: #eeeffb;
+  --rn-input-border: #d6d8ea;
+  --rn-btn: linear-gradient(180deg, #7840e3 0%, #6b33d8 100%);
+  --rn-pill: linear-gradient(180deg, #8752f2 0%, #7140e6 100%);
+  --rn-toggle-track: #3e3c68;
+  --rn-toggle-border: #c9c7e2;
+  --rn-toggle-moon: #c6c4dd;
+  --rn-accent: #7a45ea;
+}
+
+html[data-theme='dark'] {
+  --rn-bg: #16142b;
+  --rn-text: #ffffff;
+  --rn-para: #e9e7f5;
+  --rn-link: #ffffff;
+  --rn-card-bg: #2e294e;
+  --rn-card-border: rgba(255, 255, 255, 0.05);
+  --rn-card-shadow: none;
+  --rn-avatar-bg: radial-gradient(circle at 50% 40%, #b38bff 0%, #8a55f0 55%, #7040e0 100%);
+  --rn-avatar-text: #ffffff;
+  --rn-avatar-glow: 0 0 18px rgba(150, 100, 255, 0.6);
+  --rn-input-bg: #2f2a51;
+  --rn-input-border: #464070;
+  --rn-btn: linear-gradient(180deg, #8a55ec 0%, #7c47e0 100%);
+  --rn-pill: linear-gradient(180deg, #8f5af5 0%, #7d48ea 100%);
+  --rn-toggle-track: #454479;
+  --rn-toggle-border: #5c5b92;
+  --rn-toggle-moon: #b9b8de;
+  --rn-accent: #9b6dff;
+}
+
+/* Page background follows the theme site-wide */
+html[data-theme],
+html[data-theme] body {
+  background: var(--rn-bg);
+  color: var(--rn-text);
+}
+
+/*=============================================================
+                        SHARED ROOT
+=============================================================*/
+.rn-root {
+  container-type: inline-size;
+  --u: calc(min(100cqw, 1440px) / 390);
+  display: block;
+  padding: 0;
+  margin: 0;
+  font-family:
+    'Inter',
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+  color: var(--rn-text);
+  -webkit-font-smoothing: antialiased;
+}
+.rn-root *,
+.rn-root *::before,
+.rn-root *::after {
+  box-sizing: border-box;
+}
+
+/*=============================================================
+                          NAVBAR
+=============================================================*/
+.rn-root .rn-navbar {
+  height: calc(39 * var(--u));
+  display: flex;
+  align-items: center;
+  padding: 0 calc(8 * var(--u)) 0 calc(14 * var(--u));
+  border: none;
+}
+
+/* The logo images have empty padding round the artwork; this window crops it off */
+.rn-root .rn-logo {
+  position: relative;
+  display: block;
+  width: calc(84 * var(--u));
+  height: calc(14.6 * var(--u));
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.rn-root .rn-logo-img {
+  position: absolute;
+  width: calc(87.05 * var(--u));
+  max-width: none;
+  left: calc(-1.3 * var(--u));
+  top: calc(-8.7 * var(--u));
+}
+.rn-root .rn-logo-dark {
+  display: none;
+}
+html[data-theme='dark'] .rn-root .rn-logo-light {
+  display: none;
+}
+html[data-theme='dark'] .rn-root .rn-logo-dark {
+  display: block;
+}
+
+.rn-root .rn-nav-links {
+  display: flex;
+  list-style: none;
+  margin: 0 0 0 calc(18 * var(--u));
+  padding: 0;
+  gap: calc(12.5 * var(--u));
+  font-size: calc(5.8 * var(--u));
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.rn-root .rn-nav-links a {
+  color: var(--rn-link);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.rn-root .rn-nav-links a:hover {
+  color: var(--rn-accent);
+}
+
+.rn-root .rn-nav-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: calc(2 * var(--u));
+}
+
+.rn-root .rn-theme-toggle {
+  position: relative;
+  width: calc(36 * var(--u));
+  height: calc(15.75 * var(--u));
+  padding: 0;
+  margin: 0;
+  border-radius: 999px;
+  background: var(--rn-toggle-track);
+  border: calc(0.5 * var(--u)) solid var(--rn-toggle-border);
+  cursor: pointer;
+}
+.rn-root .rn-knob {
+  position: absolute;
+  top: 50%;
+  left: calc(0.4 * var(--u));
+  transform: translateY(-50%);
+  width: calc(14.5 * var(--u));
+  height: calc(14.5 * var(--u));
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.25);
+  display: grid;
+  place-items: center;
+  color: #4a4870;
+}
+.rn-root .rn-knob svg {
+  width: calc(8 * var(--u));
+  height: calc(8 * var(--u));
+}
+.rn-root .rn-moon {
+  position: absolute;
+  right: calc(4.5 * var(--u));
+  top: 50%;
+  transform: translateY(-50%);
+  width: calc(6.5 * var(--u));
+  height: calc(6.5 * var(--u));
+  color: var(--rn-toggle-moon);
+}
+
+.rn-root .rn-pill {
+  display: grid;
+  place-items: center;
+  width: calc(42 * var(--u));
+  height: calc(15 * var(--u));
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 999px;
+  background: var(--rn-pill);
+  color: #fff;
+  font: inherit;
+  font-size: calc(6 * var(--u));
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: 0 0 12px rgba(123, 70, 240, 0.35);
+}
+.rn-root .rn-pill:hover {
+  filter: brightness(1.08);
+  color: #fff;
+}
+
+.rn-root .rn-user-name {
+  font-size: calc(5.8 * var(--u));
+  font-weight: 600;
+  color: var(--rn-link);
+  margin-right: calc(3 * var(--u));
+}
+
+/*=============================================================
+                      SHARED HEADINGS
+=============================================================*/
+.rn-root .rn-title {
+  margin: 0;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--rn-text);
+}
+.rn-root .rn-intro {
+  margin: 0;
+  color: var(--rn-para);
+}
+
+/*=============================================================
+                           ABOUT
+=============================================================*/
+.rn-root .rn-about {
+  padding: calc(20.5 * var(--u)) 0 calc(20 * var(--u));
+}
+.rn-root .rn-about .rn-title {
+  margin-left: calc(40.7 * var(--u));
+  font-size: calc(17 * var(--u));
+}
+.rn-root .rn-about .rn-intro {
+  margin: calc(4.1 * var(--u)) 0 0 calc(40.7 * var(--u));
+  font-size: calc(9 * var(--u));
+  line-height: calc(13.3 * var(--u));
+  white-space: nowrap;
+}
+
+.rn-root .rn-team {
+  display: flex;
+  list-style: none;
+  padding: 0;
+  gap: calc(10.7 * var(--u));
+  margin: calc(17.2 * var(--u)) 0 0 calc(28 * var(--u));
+}
+.rn-root .rn-member {
+  width: calc(56.7 * var(--u));
+  height: calc(72 * var(--u));
+  background: var(--rn-card-bg);
+  border: 1px solid var(--rn-card-border);
+  border-radius: calc(6 * var(--u));
+  box-shadow: var(--rn-card-shadow);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: calc(10.2 * var(--u));
+  transition: transform 0.2s ease;
+}
+.rn-root .rn-member:hover {
+  transform: translateY(calc(-1.5 * var(--u)));
+}
+.rn-root .rn-avatar {
+  width: calc(31.7 * var(--u));
+  height: calc(31.7 * var(--u));
+  border-radius: 50%;
+  background: var(--rn-avatar-bg);
+  box-shadow: var(--rn-avatar-glow);
+  color: var(--rn-avatar-text);
+  display: grid;
+  place-items: center;
+  font-size: calc(17 * var(--u));
+  font-weight: 800;
+  line-height: 1;
+}
+.rn-root .rn-member-name {
+  margin-top: calc(8.2 * var(--u));
+  font-size: calc(9.5 * var(--u));
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+
+/*=============================================================
+                          CONTACT
+=============================================================*/
+.rn-root .rn-contact {
+  padding: calc(5.2 * var(--u)) 0 calc(20 * var(--u)) calc(47 * var(--u));
+}
+.rn-root .rn-contact .rn-title {
+  font-size: calc(14.6 * var(--u));
+}
+.rn-root .rn-contact .rn-intro {
+  margin-top: calc(4.9 * var(--u));
+  font-size: calc(8 * var(--u));
+  line-height: 1;
+}
+
+.rn-root .rn-form {
+  display: block;
+  width: calc(300 * var(--u));
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+.rn-root .rn-form-row {
+  display: grid;
+  grid-template-columns: calc(140 * var(--u)) calc(144 * var(--u));
+  column-gap: calc(16 * var(--u));
+  margin-top: calc(13 * var(--u));
+}
+.rn-root .rn-field label {
+  display: block;
+  margin: 0 0 calc(3 * var(--u));
+  font-size: calc(7.6 * var(--u));
+  font-weight: 600;
+  line-height: 1;
+  color: var(--rn-text);
+}
+.rn-root .rn-field input,
+.rn-root .rn-field textarea {
+  display: block;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  background: var(--rn-input-bg);
+  border: 1px solid var(--rn-input-border);
+  border-radius: calc(4 * var(--u));
+  font: inherit;
+  font-size: calc(7 * var(--u));
+  color: var(--rn-text);
+  padding: 0 calc(5 * var(--u));
+  outline: none;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+.rn-root .rn-field input {
+  height: calc(19.3 * var(--u));
+}
+.rn-root .rn-field textarea {
+  height: calc(56.7 * var(--u));
+  padding-top: calc(5 * var(--u));
+  resize: vertical;
+}
+.rn-root .rn-field input:focus,
+.rn-root .rn-field textarea:focus {
+  border-color: var(--rn-accent);
+  box-shadow: 0 0 0 3px rgba(122, 69, 234, 0.25);
+}
+.rn-root .rn-field-message {
+  margin-top: calc(12.4 * var(--u));
+}
+
+.rn-root .rn-send {
+  display: block;
+  width: 100%;
+  height: calc(23 * var(--u));
+  margin: calc(11 * var(--u)) 0 0;
+  padding: 0;
+  border: none;
+  border-radius: calc(4 * var(--u));
+  background: var(--rn-btn);
+  color: #fff;
+  font: inherit;
+  font-size: calc(9 * var(--u));
+  font-weight: 600;
+  cursor: pointer;
+}
+.rn-root .rn-send:hover {
+  filter: brightness(1.08);
+}
+
+.rn-root .rn-status {
+  margin: calc(4 * var(--u)) 0 0;
+  font-size: calc(6.5 * var(--u));
+  color: var(--rn-accent);
+}
+.rn-root .rn-status-error {
+  color: #e5484d;
+}
+
+/*=============================================================
+                      NARROW SCREENS
+=============================================================*/
+@container (max-width: 600px) {
+  .rn-navbar,
+  .rn-about,
+  .rn-contact {
+    --u: 2.2px;
+  }
+  .rn-root .rn-navbar {
+    height: auto;
+    flex-wrap: wrap;
+    row-gap: 14px;
+    padding: 14px 0;
+  }
+  .rn-root .rn-nav-links {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  .rn-root .rn-about .rn-title,
+  .rn-root .rn-about .rn-intro,
+  .rn-root .rn-team {
+    margin-left: 0;
+  }
+  .rn-root .rn-about .rn-intro {
+    white-space: normal;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  .rn-root .rn-about .rn-intro br {
+    display: none;
+  }
+  .rn-root .rn-team {
+    flex-wrap: wrap;
+  }
+  .rn-root .rn-contact {
+    padding-left: 0;
+  }
+  .rn-root .rn-form {
+    width: 100%;
+  }
+  .rn-root .rn-form-row {
+    grid-template-columns: 1fr;
+    row-gap: 20px;
+  }
+}

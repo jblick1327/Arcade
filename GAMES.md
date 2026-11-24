@@ -26,6 +26,8 @@ The folder must contain:
 
 `scoreOrder` is `"desc"` when a higher score is better and `"asc"` when lower is better (golf, fastest time). `width` and `height` are the size of the frame your game is shown in, in pixels.
 
+Optional: add a `thumbnail.svg` (or `.png`, `.jpg`, `.webp`) beside `index.html` and it becomes your game's picture on the Games page. A 4:3 image works best (for example 320 × 240). Without one the card shows the first letter of your title.
+
 ## 2. Use relative paths
 
 Write `src="player.png"` or `src="./js/main.js"`. Never start a path with `/` (the only exception is the SDK line below). If your paths are relative, the game works both on the site and when you open it on your own machine.
@@ -93,6 +95,6 @@ Set `"mode": "match"` in `game.json`. Matches default to 2 players; add `"maxPla
 - Redraw your board when `Arcade.match.onChange(fn)` fires. It runs whenever another player moves; the site checks for changes every second or two.
 - If players act at once, a conflicting write is rejected with `{ ok: false, reason: 'conflict' }` and the current match attached. Use that match and carry on.
 
-The server doesn't know your game's rules: it checks that it's the sender's turn and the version matches, and nothing else. A determined player could cheat by sending the server a move your game would never allow. That's fine for a casual game. Automate is the exception, with its own checks in `server/utils/automate_rules.js`, because it's a competitive game. If you want that, talk to the maintainer first.
+The server doesn't know your game's rules: it checks that it's the sender's turn and the version matches, and nothing else. A determined player could cheat by sending the server a move your game would never allow. That's fine for a casual game. If you want the server to enforce your rules, add a `server.js` to your folder with a `validateUpdate` function (and optionally `view` and named `actions`); the contract is under "Game server hooks" in `ARCHITECTURE.md`, and `games/automate/server.js` is the worked example. Your `server.js` runs on the server, so keep it to pure rule checks (no file, network or database access) and get it reviewed by the backend maintainer before merging. Test it in `games/<your-game>/tests/` (see `games/automate/tests/server.test.cjs`); `npm run test:games` runs every game's tests.
 
 To try a match you need the full site running (see the README) and a separate logged-in browser session for each player (two by default, or four with `"maxPlayers": 4`).

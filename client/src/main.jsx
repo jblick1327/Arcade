@@ -12,7 +12,10 @@ import { BrowserRouter } from 'react-router-dom';
 
 // import the app & the site styles
 import App from './App.jsx';
-import './site.css';
+import './styles/site.css';
+import './styles/reachnid.css';
+import './styles/pages.css';
+import './styles/auth.css';
 
 //=============================================================
 //                         MOUNT APP

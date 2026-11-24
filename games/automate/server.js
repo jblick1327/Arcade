@@ -1,7 +1,12 @@
-// automate_rules.js - server-side checks for Automate matches
+// server.js - Automate's server hook (server-side checks for Automate matches)
 // Author: Reachnid Group
 // Centennial College - Fall 2026
 
+// The platform calls this hook for every read, write and action on an Automate match, so the
+// server stays authoritative over drafts and moves (see "Game server hooks" in ARCHITECTURE.md).
+// This file is CommonJS like the rest of games/, and must stay pure rule checks
+// (no file, network or database access).
+//
 // The server never trusts the browser: before saving an Automate move it replays the whole game
 // from the drafted armies and only accepts one legal draft placement or one legal engine move.
 //
@@ -16,11 +21,11 @@
 //=============================================================
 
 // import node's deep-compare helper
-import { isDeepStrictEqual } from 'node:util';
+const { isDeepStrictEqual } = require('node:util');
 
 // import the game's own draft & chess rules, so browser and server agree
-import Army from '../../games/automate/setup.js';
-import Chess from '../../games/automate/rules.js';
+const Army = require('./setup.js');
+const Chess = require('./rules.js');
 
 //=============================================================
 //                          HELPERS
@@ -148,12 +153,12 @@ function updateBattle(previous, actor, patch) {
 }
 
 //=============================================================
-//                          EXPORTS
+//                        RULE CHECKS
 //=============================================================
 
 // bring a saved state up to date with the current rules
 // (old drafts are re-checked; drafts that can't continue are flagged restartRequired)
-export function currentAutomateState(state) {
+function currentAutomateState(state) {
   if (state?.phase !== 'draft' || state.placementOnly || state.restartRequired) return state;
 
   // start from the saved draft if it is valid, otherwise an empty one
@@ -177,7 +182,7 @@ export function currentAutomateState(state) {
 
 // reset an old draft that can't continue (returns null for any other state)
 // the next placement starts with White
-export function restartIncompatibleDraft(state) {
+function restartIncompatibleDraft(state) {
   if (!currentAutomateState(state)?.restartRequired) return null;
   return { state: null, turn: 0, winner: null };
 }
@@ -185,7 +190,7 @@ export function restartIncompatibleDraft(state) {
 // check an Automate update before it is saved
 // state = the match's saved state, actor = seat writing, patch = { state, turn, result? }
 // returns the fields to save, or null when the update is not allowed
-export function validateAutomateUpdate(state, actor, patch) {
+function validateAutomateUpdate(state, actor, patch) {
   const previous = currentAutomateState(state) ?? { phase: 'draft', draft: Army.create() };
   const { draft } = previous;
   if (previous.restartRequired || !validDraft(draft)) return null;
@@ -193,3 +198,42 @@ export function validateAutomateUpdate(state, actor, patch) {
   if (previous.phase === 'battle') return updateBattle(previous, actor, patch);
   return null;
 }
+
+//=============================================================
+//                          EXPORTS
+//=============================================================
+
+// message shown when an old draft blocks the match
+const BLOCKED = 'This saved draft cannot continue under the new placement rules.';
+
+module.exports = {
+  // called on every read: brings saved state up to date, and blocks drafts that can't continue
+  view({ state, turn }) {
+    const current = currentAutomateState(state);
+    if (current?.restartRequired) return { state: current, turn, blocked: BLOCKED };
+
+    // during the draft the turn always follows the colour placing next
+    if (current?.phase === 'draft') turn = current.draft.turn === 'w' ? 0 : 1;
+    return { state: current, turn };
+  },
+
+  // called on every write: returns the fields to save, or null to refuse it
+  validateUpdate: validateAutomateUpdate,
+
+  // named actions the match page can show as buttons
+  actions: {
+    'restart-draft': {
+      label: 'Restart draft',
+      confirm:
+        'Restart this incompatible Automate draft for both players? All placed pieces will be cleared.',
+      available: ({ state, status }) =>
+        status === 'active' && !!currentAutomateState(state)?.restartRequired,
+      run: ({ state }) => restartIncompatibleDraft(state),
+    },
+  },
+
+  // exposed for the game's own tests
+  currentAutomateState,
+  restartIncompatibleDraft,
+  validateAutomateUpdate,
+};

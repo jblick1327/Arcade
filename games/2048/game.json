@@ -1,0 +1,8 @@
+{
+  "title": "2048",
+  "description": "Slide the tiles, join matching numbers and reach the 2048 tile.",
+  "mode": "score",
+  "scoreOrder": "desc",
+  "width": 540,
+  "height": 860
+}

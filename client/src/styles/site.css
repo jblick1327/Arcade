@@ -26,15 +26,15 @@
 body {
   margin: 0;
 }
-button,
-input {
+:where(button),
+:where(input) {
   font: inherit;
 }
 a {
   color: inherit;
   text-underline-offset: 0.2em;
 }
-a:hover {
+:where(a:hover) {
   color: #4b5563;
 }
 a:focus-visible,
@@ -45,36 +45,13 @@ input:focus-visible {
 }
 
 /*=============================================================
-                        LAYOUT & NAV BAR
+                             LAYOUT
 =============================================================*/
 
 .site-shell {
   max-width: 960px;
   margin: 0 auto;
   padding: 0 1.5rem;
-}
-.site-nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 1rem;
-  padding: 1.25rem 0;
-  border-bottom: 1px solid #dedede;
-}
-.brand {
-  font-weight: 700;
-  font-size: 1.125rem;
-  text-decoration: none;
-}
-.nav-actions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-.user-name {
-  color: #666;
 }
 
 /*=============================================================
@@ -97,48 +74,26 @@ p {
 }
 
 /*=============================================================
-                           GAME LIST
-=============================================================*/
-
-.game-list {
-  list-style: none;
-  padding: 0;
-  margin: 1.5rem 0 0;
-}
-.game-list li {
-  padding: 1rem 0;
-  border-bottom: 1px solid #dedede;
-}
-.game-list li:first-child {
-  border-top: 1px solid #dedede;
-}
-.game-list li > a {
-  font-weight: 600;
-}
-.game-list li p {
-  margin: 0.3rem 0 0;
-  color: #666;
-}
-
-/*=============================================================
                         FORMS & BUTTONS
 =============================================================*/
 
-form {
+/* plain-element styles are wrapped in :where() so any page's own classes override them */
+
+:where(form) {
   max-width: 24rem;
 }
-form label {
+:where(form label) {
   display: grid;
   gap: 0.4rem;
 }
-input {
+:where(input) {
   width: 100%;
   padding: 0.6rem 0.7rem;
   border: 1px solid #c9c9c9;
   border-radius: 4px;
   background: #fff;
 }
-button {
+:where(button) {
   padding: 0.55rem 0.85rem;
   border: 1px solid #24282c;
   border-radius: 4px;
@@ -146,21 +101,14 @@ button {
   color: #fff;
   cursor: pointer;
 }
-button:hover {
+:where(button:hover) {
   background: #41464b;
 }
-button:disabled {
+:where(button:disabled) {
   opacity: 0.5;
   cursor: not-allowed;
 }
-.quiet-button {
-  background: transparent;
-  color: #24282c;
-}
-.quiet-button:hover {
-  background: #eee;
-}
-[role='alert'] {
+:where([role='alert']) {
   color: #b42318;
 }
 
@@ -178,19 +126,19 @@ main > section {
   border: 1px solid #dedede;
   background: #fff;
 }
-table {
+:where(table) {
   width: 100%;
   max-width: 36rem;
   border-collapse: collapse;
   font-variant-numeric: tabular-nums;
 }
-th,
-td {
+:where(th),
+:where(td) {
   text-align: left;
   padding: 0.65rem 0.5rem;
   border-bottom: 1px solid #dedede;
 }
-th {
+:where(th) {
   font-weight: 600;
 }
 /*=============================================================
@@ -204,4 +152,33 @@ th {
   main {
     padding-top: 1.5rem;
   }
+}
+
+/*=============================================================
+                           DARK MODE
+=============================================================*/
+
+/* the page colours come from reachnid.css - these keep the plain site styles readable */
+:where(html[data-theme='dark'] a:hover) {
+  color: #c9b6ff;
+}
+:where(html[data-theme='dark'] input) {
+  background: #2f2a51;
+  border-color: #464070;
+  color: #fff;
+}
+:where(html[data-theme='dark'] button) {
+  border-color: #8a55ec;
+  background: #7c47e0;
+}
+:where(html[data-theme='dark'] button:hover) {
+  background: #8f5af5;
+}
+:where(html[data-theme='dark'] th),
+:where(html[data-theme='dark'] td),
+html[data-theme='dark'] .game-frame {
+  border-color: #464070;
+}
+:where(html[data-theme='dark'] [role='alert']) {
+  color: #ff8a80;
 }

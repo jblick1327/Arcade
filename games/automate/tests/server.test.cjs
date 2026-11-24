@@ -1,4 +1,4 @@
-// automate_rules.test.js - tests for the server-side Automate rule checks
+// server.test.cjs - tests for Automate's server hook (games/automate/server.js)
 // Author: Reachnid Group
 // Centennial College - Fall 2026
 
@@ -6,17 +6,14 @@
 //                          IMPORTS
 //=============================================================
 
-import assert from 'node:assert/strict';
-import { test } from 'node:test';
+const assert = require('node:assert/strict');
+const { test } = require('node:test');
 
-// import the game rules and the code being tested
-import Army from '../../games/automate/setup.js';
-import Chess from '../../games/automate/rules.js';
-import {
-  currentAutomateState,
-  restartIncompatibleDraft,
-  validateAutomateUpdate,
-} from '../utils/automate_rules.js';
+// import the game rules and the hook being tested
+const Army = require('../setup.js');
+const Chess = require('../rules.js');
+const hook = require('../server.js');
+const { currentAutomateState, restartIncompatibleDraft, validateAutomateUpdate } = hook;
 
 //=============================================================
 //                        TEST HELPERS
@@ -169,4 +166,46 @@ test('the server derives the winner from checkmate in a resumed battle', () => {
   const proposed = patch(draft, runner, moves);
   assert.equal(validateAutomateUpdate(state, runner, { ...proposed, result: { winner: 0 } }), null);
   assert.deepEqual(apply(state, runner, proposed), { ...proposed, status: 'done', winner: 1 });
+});
+
+// the platform-facing hook (view / actions), as the match controller calls it
+function legacyDraft() {
+  const legacy = patch(draftKings().draft).state;
+  legacy.draft.armies.w[60] = null;
+  legacy.draft.armies.w[57] = 'N'; // pieces without a king: older rules allowed this, current ones cannot continue it
+  return legacy;
+}
+
+test('view blocks incompatible drafts and derives the draft turn for healthy ones', () => {
+  const blocked = hook.view({ state: legacyDraft(), turn: 1, status: 'active' });
+  assert.equal(blocked.state.restartRequired, true);
+  assert.equal(blocked.turn, 1, 'a blocked draft keeps its stored turn');
+  assert.match(blocked.blocked, /cannot continue/);
+
+  const healthy = hook.view({ state: draftKings(), turn: 1, status: 'active' });
+  assert.equal(healthy.blocked, undefined);
+  assert.equal(healthy.turn, healthy.state.draft.turn === 'w' ? 0 : 1);
+  assert.deepEqual(hook.view({ state: null, turn: 0, status: 'waiting' }), {
+    state: null,
+    turn: 0,
+  });
+});
+
+test('restart-draft is offered only for active incompatible drafts', () => {
+  const restart = hook.actions['restart-draft'];
+  const ready = draftKings();
+  const one = Army.perform(ready.draft, 'N', 57).state;
+  assert.equal(restart.available({ state: legacyDraft(), status: 'active' }), true);
+  for (const ctx of [
+    { state: legacyDraft(), status: 'done' },
+    { state: ready, status: 'active' }, // healthy draft
+    { state: patch(one, 0).state, status: 'active' }, // battle
+    { state: null, status: 'active' },
+  ])
+    assert.equal(restart.available(ctx), false);
+  assert.deepEqual(restart.run({ state: legacyDraft(), status: 'active', actor: 1 }), {
+    state: null,
+    turn: 0,
+    winner: null,
+  });
 });

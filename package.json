@@ -7,7 +7,9 @@
     "dev": "concurrently -k -n server,client \"node --watch server/server.js\" \"vite\"",
     "build": "vite build",
     "start": "node server/server.js",
-    "test": "node --test \"server/**/*.test.js\" \"games/*/tests/*.cjs\"",
+    "test": "npm run test:platform && npm run test:games",
+    "test:platform": "node --test \"server/**/*.test.js\"",
+    "test:games": "node --test \"games/*/tests/*.cjs\"",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

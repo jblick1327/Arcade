@@ -5,6 +5,10 @@
 // Every match has a `version` number that goes up by one on each write. A write must send the
 // version it last saw; if someone else wrote first the request gets a 409 plus the latest match,
 // so the browser can refresh and try again. This stops two players overwriting each other.
+//
+// The platform knows no game's rules. A game that wants the server to enforce them ships a
+// games/<slug>/server.js hook (view, validateUpdate, actions) - see "Game server hooks" in
+// ARCHITECTURE.md. Games without one are trusted.
 
 //=============================================================
 //                          IMPORTS
@@ -17,13 +21,8 @@ import mongoose from 'mongoose';
 import Match from '../models/match_model.js';
 import User from '../models/user_model.js';
 
-// import the game catalogue & Automate rule checks
-import { getGame } from '../utils/game_catalog.js';
-import {
-  currentAutomateState,
-  restartIncompatibleDraft,
-  validateAutomateUpdate,
-} from '../utils/automate_rules.js';
+// import the game catalogue & the loader for a game's optional server.js hook
+import { getGame, getGameServer } from '../utils/game_catalog.js';
 
 //=============================================================
 //                          HELPERS
@@ -32,22 +31,34 @@ import {
 // seat number (0-3) of a user in the match, or -1 when they are not playing
 const seatOf = (match, userId) => match.players.findIndex((p) => String(p) === String(userId));
 
-// the state and turn the browser should see
-// (Automate drafts are re-checked so older saves stay playable)
-function matchState(match) {
-  if (match.game !== 'automate') return { state: match.state, turn: match.turn };
-  const state = currentAutomateState(match.state);
-  let turn = match.turn;
+// the state and turn the browser should see - the game's view hook may adjust them
+// and may also return `blocked` (a message) when the saved match cannot continue
+function matchState(match, hooks) {
+  const raw = { state: match.state, turn: match.turn };
+  return hooks?.view ? hooks.view({ ...raw, status: match.status }) : raw;
+}
 
-  // during the draft the turn always follows the colour placing next
-  if (state?.phase === 'draft' && !state.restartRequired) turn = state.draft.turn === 'w' ? 0 : 1;
-  return { state, turn };
+// the named actions (like Automate's "restart-draft") the game offers on this match right now
+function availableActions(match, hooks) {
+  return Object.entries(hooks?.actions || {})
+    .filter(([, a]) => a.available?.({ state: match.state, status: match.status }))
+    .map(([name, a]) => ({
+      name,
+      label: a.label || name,
+      ...(a.confirm ? { confirm: a.confirm } : {}),
+    }));
 }
 
 // turn one match (or a list of matches) into the JSON the browser uses
 // `you` is the viewer's seat, or null for spectators
 async function present(docs, me) {
   const list = Array.isArray(docs) ? docs : [docs];
+
+  // load each game's server hook once
+  const slugs = [...new Set(list.map((m) => m.game))];
+  const hooks = Object.fromEntries(
+    await Promise.all(slugs.map(async (g) => [g, await getGameServer(g)])),
+  );
 
   // look up every player's name in one query
   const ids = [...new Set(list.flatMap((m) => m.players.map(String)))];
@@ -56,7 +67,7 @@ async function present(docs, me) {
 
   const out = list.map((m) => {
     const seat = me ? seatOf(m, me) : -1;
-    const { state, turn } = matchState(m);
+    const { state, turn, blocked } = matchState(m, hooks[m.game]);
     return {
       id: String(m._id),
       game: m.game,
@@ -67,6 +78,9 @@ async function present(docs, me) {
       winner: m.winner,
       version: m.version,
       you: seat < 0 ? null : seat,
+      blocked: blocked || null,
+      // spectators never get actions
+      actions: seat < 0 ? [] : availableActions(m, hooks[m.game]),
     };
   });
   return Array.isArray(docs) ? out : out[0];
@@ -181,29 +195,33 @@ export const cancelMatch = async (req, res) => {
   res.status(204).end();
 };
 
-// POST restart an old Automate draft that the current rules can't continue
-// (either player in the match may do this)
-export const restartDraft = async (req, res) => {
+// POST run a named action the match's game offers in its server hook
+// (for example Automate's "restart-draft") - any player in the match may run it
+export const runAction = async (req, res) => {
   const m = await findMatch(req, res);
   if (!m) return;
 
   // only players in the match
-  if (seatOf(m, req.userId) < 0) {
-    return res.status(403).json({ error: 'You are not in this match' });
-  }
+  const actor = seatOf(m, req.userId);
+  if (actor < 0) return res.status(403).json({ error: 'You are not in this match' });
 
-  // check the version first, so a player racing a restart that already happened gets a refresh
+  // check the version first, so a player racing an action that already ran gets a refresh
   if (req.body?.version !== m.version) return sendConflict(res, m, req.userId);
 
-  // only drafts flagged restartRequired can be restarted
-  const restart =
-    m.game === 'automate' && m.status === 'active' ? restartIncompatibleDraft(m.state) : null;
-  if (!restart) return sendConflict(res, m, req.userId, 'Draft restart is not available');
+  // find the action - only the game's own entries count (not inherited ones like toString)
+  const hooks = getGame(m.game) ? await getGameServer(m.game) : null;
+  const actions = hooks?.actions || {};
+  const action = Object.hasOwn(actions, req.params.action) ? actions[req.params.action] : null;
 
-  // save the reset draft
+  // the game decides if the action is available, and what to save
+  const ctx = { state: m.state, status: m.status, actor };
+  const set = action?.available?.(ctx) ? action.run(ctx) : null;
+  if (!set) return sendConflict(res, m, req.userId, 'Action is not available');
+
+  // save only if nobody else wrote first
   const updated = await Match.findOneAndUpdate(
-    { _id: m._id, game: 'automate', status: 'active', version: m.version },
-    { $set: restart, $inc: { version: 1 } },
+    { _id: m._id, game: m.game, status: m.status, version: m.version },
+    { $set: set, $inc: { version: 1 } },
     { new: true },
   );
   if (!updated) return sendConflict(res, await Match.findById(m._id), req.userId);
@@ -231,8 +249,15 @@ export const updateMatch = async (req, res) => {
   // destructure the request body to get the turn details
   const { version, state, turn, result } = req.body || {};
 
+  // the game folder must still exist
+  if (!getGame(m.game)) return res.status(404).json({ error: 'Game not found' });
+
+  // a blocked match can't be played until one of its actions clears it
+  const hooks = await getGameServer(m.game);
+  const current = matchState(m, hooks);
+  if (current.blocked) return sendConflict(res, m, req.userId);
+
   // it must be this player's turn, and they must have the latest version
-  const current = matchState(m);
   if (m.status !== 'active' || seat !== current.turn || version !== m.version) {
     return sendConflict(res, m, req.userId);
   }
@@ -248,16 +273,12 @@ export const updateMatch = async (req, res) => {
     return res.status(400).json({ error: 'result.winner must identify a player or be null' });
   }
 
-  // Automate moves are fully re-checked on the server; other games are trusted
-  const set =
-    m.game === 'automate'
-      ? validateAutomateUpdate(current.state, seat, { state, turn, result })
-      : { state, turn };
-  if (!set) return res.status(400).json({ error: 'invalid-automate-update' });
-  if (m.game !== 'automate' && result) {
-    set.winner = result.winner;
-    set.status = 'done';
-  }
+  // a game's validateUpdate hook decides what is saved (including any result);
+  // games without one are trusted
+  const set = hooks?.validateUpdate
+    ? hooks.validateUpdate(current.state, seat, { state, turn, result })
+    : { state, turn, ...(result ? { winner: result.winner, status: 'done' } : {}) };
+  if (!set) return res.status(400).json({ error: 'invalid-update' });
 
   // save only if nobody else wrote first
   const upd = await Match.findOneAndUpdate(

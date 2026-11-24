@@ -1,0 +1,8 @@
+{
+  "title": "Snake",
+  "description": "Collect apples, grow longer, and avoid the walls.",
+  "mode": "score",
+  "scoreOrder": "desc",
+  "width": 600,
+  "height": 860
+}

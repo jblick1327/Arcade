@@ -19,7 +19,7 @@ import {
   createMatch,
   joinMatch,
   cancelMatch,
-  restartDraft,
+  runAction,
   getMatch,
   updateMatch,
 } from '../controllers/match_controller.js';
@@ -40,8 +40,8 @@ router.post('/matches/:id/join', requireAuth, joinMatch);
 // DELETE (cancel) a waiting match
 router.delete('/matches/:id', requireAuth, cancelMatch);
 
-// POST restart an old Automate draft
-router.post('/matches/:id/restart-draft', requireAuth, restartDraft);
+// POST run a named action from the game's server hook
+router.post('/matches/:id/actions/:action', requireAuth, runAction);
 
 // GET a single match
 router.get('/matches/:id', getMatch);

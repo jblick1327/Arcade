@@ -8,16 +8,22 @@
 
 // import react hooks & the router
 import { useEffect, useState } from 'react';
-import { Link, Route, Routes } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
 
 // import the API helper
-import { api } from './api.js';
+import { api } from './utils/api.js';
+
+// import the nav bar
+import Navbar from './components/Navbar.jsx';
 
 // import pages
 import Home from './pages/Home.jsx';
+import Games from './pages/Games.jsx';
 import Play from './pages/Play.jsx';
-import Login from './pages/Login.jsx';
-import Register from './pages/Register.jsx';
+import Leaderboard from './pages/Leaderboard.jsx';
+import Auth from './pages/Auth.jsx';
+import About from './pages/About.jsx';
+import Contact from './pages/Contact.jsx';
 
 //=============================================================
 //                         COMPONENT
@@ -52,33 +58,18 @@ const App = () => {
   return (
     <div className="site-shell">
       {/* nav bar */}
-      <nav className="site-nav" aria-label="Main navigation">
-        <Link className="brand" to="/">
-          Arcade
-        </Link>
-        <div className="nav-actions">
-          {user ? (
-            <>
-              <span className="user-name">{user.name}</span>
-              <button className="quiet-button" type="button" onClick={logout}>
-                Log out
-              </button>
-            </>
-          ) : (
-            <>
-              <Link to="/login">Log in</Link>
-              <Link to="/register">Register</Link>
-            </>
-          )}
-        </div>
-      </nav>
+      <Navbar user={user} onLogout={logout} />
 
       {/* pages */}
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login setUser={setUser} />} />
-        <Route path="/register" element={<Register setUser={setUser} />} />
+        <Route path="/login" element={<Auth setUser={setUser} />} />
+        <Route path="/register" element={<Auth setUser={setUser} />} />
+        <Route path="/play" element={<Games />} />
         <Route path="/play/:slug" element={<Play user={user} />} />
+        <Route path="/leaderboard" element={<Leaderboard />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/contact" element={<Contact />} />
         <Route
           path="*"
           element={
