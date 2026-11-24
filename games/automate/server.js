@@ -1,6 +1,8 @@
-import { isDeepStrictEqual } from 'node:util';
-import Army from '../games/automate/setup.js';
-import Chess from '../games/automate/rules.js';
+/* Automate's server hook: the platform calls this for every read, write and action on an
+   Automate match, so the server stays authoritative over drafts and moves (see GAMES.md). */
+const { isDeepStrictEqual } = require('node:util');
+const Army = require('./setup.js');
+const Chess = require('./rules.js');
 
 function validDraft(draft) {
   return (draft?.turn === 'w' || draft?.turn === 'b')
@@ -10,7 +12,7 @@ function validDraft(draft) {
 
 const seat = color => color === 'w' ? 0 : 1;
 
-export function currentAutomateState(state) {
+function currentAutomateState(state) {
   if (state?.phase !== 'draft' || state.placementOnly || state.restartRequired) return state;
   const valid = validDraft(state.draft);
   const draft = valid ? Army.snapshot(state.draft) : Army.create();
@@ -27,7 +29,7 @@ export function currentAutomateState(state) {
 }
 
 /** Only incompatible legacy drafts may be reset. The following placement starts at White. */
-export function restartIncompatibleDraft(state) {
+function restartIncompatibleDraft(state) {
   if (!currentAutomateState(state)?.restartRequired) return null;
   return { state: null, turn: 0, winner: null };
 }
@@ -102,7 +104,7 @@ function updateBattle(previous, actor, patch) {
   return save(patch, { phase: 'battle', draft: Army.snapshot(draft), runner, moves: proposed }, runner, history);
 }
 
-export function validateAutomateUpdate(state, actor, patch) {
+function validateAutomateUpdate(state, actor, patch) {
   const previous = currentAutomateState(state) ?? { phase: 'draft', draft: Army.create() };
   const { draft } = previous;
   if (previous.restartRequired || !validDraft(draft)) return null;
@@ -110,3 +112,32 @@ export function validateAutomateUpdate(state, actor, patch) {
   if (previous.phase === 'battle') return updateBattle(previous, actor, patch);
   return null;
 }
+
+const BLOCKED = 'This saved draft cannot continue under the new placement rules.';
+
+module.exports = {
+  /** Normalizes saved state on every read; a draft from older rules blocks play until restarted. */
+  view({ state, turn }) {
+    const current = currentAutomateState(state);
+    if (current?.restartRequired) return { state: current, turn, blocked: BLOCKED };
+    if (current?.phase === 'draft') turn = current.draft.turn === 'w' ? 0 : 1;
+    return { state: current, turn };
+  },
+
+  /** Returns the fields to save, or null to refuse the write. */
+  validateUpdate: validateAutomateUpdate,
+
+  actions: {
+    'restart-draft': {
+      label: 'Restart draft',
+      confirm: 'Restart this incompatible Automate draft for both players? All placed pieces will be cleared.',
+      available: ({ state, status }) => status === 'active' && !!currentAutomateState(state)?.restartRequired,
+      run: ({ state }) => restartIncompatibleDraft(state),
+    },
+  },
+
+  // Exposed for the game's own tests.
+  currentAutomateState,
+  restartIncompatibleDraft,
+  validateAutomateUpdate,
+};

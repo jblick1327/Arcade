@@ -2,27 +2,33 @@ import { Router } from 'express';
 import mongoose from 'mongoose';
 import { Match, User } from '../models.js';
 import { requireAuth } from '../auth.js';
-import { getGame } from '../games.js';
-import { currentAutomateState, restartIncompatibleDraft, validateAutomateUpdate } from '../automate.js';
+import { getGame, getGameServer } from '../games.js';
 
 const router = Router();
 
-function matchState(match) {
-  if (match.game !== 'automate') return { state: match.state, turn: match.turn };
-  const state = currentAutomateState(match.state);
-  let turn = match.turn;
-  if (state?.phase === 'draft' && !state.restartRequired) turn = state.draft.turn === 'w' ? 0 : 1;
-  return { state, turn };
+/** Applies the game's optional view hook; without one the saved state is returned as is. */
+function matchState(match, hooks) {
+  const raw = { state: match.state, turn: match.turn };
+  return hooks?.view ? hooks.view({ ...raw, status: match.status }) : raw;
+}
+
+/** Named actions the game currently offers on this match. */
+function availableActions(match, hooks) {
+  return Object.entries(hooks?.actions || {})
+    .filter(([, a]) => a.available?.({ state: match.state, status: match.status }))
+    .map(([name, a]) => ({ name, label: a.label || name, ...(a.confirm ? { confirm: a.confirm } : {}) }));
 }
 
 async function present(docs, me) {
   const list = Array.isArray(docs) ? docs : [docs];
+  const hookList = await Promise.all([...new Set(list.map((m) => m.game))].map(async (g) => [g, await getGameServer(g)]));
+  const hooks = Object.fromEntries(hookList);
   const ids = [...new Set(list.flatMap((m) => m.players.map(String)))];
   const users = await User.find({ _id: { $in: ids } }, 'name');
   const names = Object.fromEntries(users.map((u) => [String(u._id), u.name]));
   const out = list.map((m) => {
     const idx = me ? m.players.findIndex((p) => String(p) === String(me)) : -1;
-    const { state, turn } = matchState(m);
+    const { state, turn, blocked } = matchState(m, hooks[m.game]);
     return {
       id: String(m._id),
       game: m.game,
@@ -33,6 +39,8 @@ async function present(docs, me) {
       winner: m.winner,
       version: m.version,
       you: idx < 0 ? null : idx,
+      blocked: blocked || null,
+      actions: idx < 0 ? [] : availableActions(m, hooks[m.game]),
     };
   });
   return Array.isArray(docs) ? out : out[0];
@@ -93,26 +101,27 @@ router.delete('/matches/:id', requireAuth, async (req, res) => {
   res.status(204).end();
 });
 
-/** Either participant can reset a legacy draft that current rules cannot continue. */
-router.post('/matches/:id/restart-draft', requireAuth, async (req, res) => {
+/** Runs a named action that the match's game offers in its server hook (see GAMES.md). */
+router.post('/matches/:id/actions/:action', requireAuth, async (req, res) => {
   if (!validId(req.params.id)) return res.status(404).json({ error: 'Match not found' });
   const m = await Match.findById(req.params.id);
   if (!m) return res.status(404).json({ error: 'Match not found' });
-  if (!m.players.some((p) => String(p) === req.userId)) {
-    return res.status(403).json({ error: 'You are not in this match' });
-  }
-  // Check staleness first so a player racing an already-applied restart gets a refresh, not a refusal.
+  const actor = m.players.findIndex((p) => String(p) === req.userId);
+  if (actor < 0) return res.status(403).json({ error: 'You are not in this match' });
+  // Check staleness first so a player racing an already-applied action gets a refresh, not a refusal.
   if (req.body?.version !== m.version) {
     return res.status(409).json({ error: 'Match changed, refresh', match: await present(m, req.userId) });
   }
-  const restart = m.game === 'automate' && m.status === 'active'
-    ? restartIncompatibleDraft(m.state) : null;
-  if (!restart) {
-    return res.status(409).json({ error: 'Draft restart is not available', match: await present(m, req.userId) });
+  const hooks = getGame(m.game) ? await getGameServer(m.game) : null;
+  const action = Object.hasOwn(hooks?.actions || {}, req.params.action) ? hooks.actions[req.params.action] : null;
+  const ctx = { state: m.state, status: m.status, actor };
+  const set = action?.available?.(ctx) ? action.run(ctx) : null;
+  if (!set) {
+    return res.status(409).json({ error: 'Action is not available', match: await present(m, req.userId) });
   }
   const updated = await Match.findOneAndUpdate(
-    { _id: m._id, game: 'automate', status: 'active', version: m.version },
-    { $set: restart, $inc: { version: 1 } },
+    { _id: m._id, game: m.game, status: m.status, version: m.version },
+    { $set: set, $inc: { version: 1 } },
     { new: true },
   );
   if (!updated) {
@@ -139,7 +148,10 @@ router.put('/matches/:id', requireAuth, async (req, res) => {
   const { version, state, turn, result } = req.body || {};
   const conflict = async (doc) =>
     res.status(409).json({ error: 'Match changed, refresh', match: await present(doc, req.userId) });
-  const current = matchState(m);
+  if (!getGame(m.game)) return res.status(404).json({ error: 'Game not found' });
+  const hooks = await getGameServer(m.game);
+  const current = matchState(m, hooks);
+  if (current.blocked) return conflict(m);
   if (m.status !== 'active' || idx !== current.turn || version !== m.version) return conflict(m);
   if (!Number.isInteger(turn) || turn < 0 || turn >= m.players.length) return res.status(400).json({ error: 'turn must identify a player in the match' });
   if (state === undefined || JSON.stringify(state).length > 64000) {
@@ -148,11 +160,11 @@ router.put('/matches/:id', requireAuth, async (req, res) => {
   if (result != null && ![null, ...m.players.map((_, i) => i)].includes(result.winner)) {
     return res.status(400).json({ error: 'result.winner must identify a player or be null' });
   }
-  const set = m.game === 'automate'
-    ? validateAutomateUpdate(current.state, idx, { state, turn, result })
-    : { state, turn };
-  if (!set) return res.status(400).json({ error: 'invalid-automate-update' });
-  if (m.game !== 'automate' && result) { set.winner = result.winner; set.status = 'done'; }
+  // A game's validateUpdate decides what is saved (including any result); otherwise the client is trusted.
+  const set = hooks?.validateUpdate
+    ? hooks.validateUpdate(current.state, idx, { state, turn, result })
+    : { state, turn, ...(result ? { winner: result.winner, status: 'done' } : {}) };
+  if (!set) return res.status(400).json({ error: 'invalid-update' });
   const upd = await Match.findOneAndUpdate(
     { _id: m._id, version: m.version, status: 'active' },
     { $set: set, $inc: { version: 1 } },

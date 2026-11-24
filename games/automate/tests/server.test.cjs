@@ -1,8 +1,8 @@
-import assert from 'node:assert/strict';
-import { test } from 'node:test';
-import Army from '../games/automate/setup.js';
-import Chess from '../games/automate/rules.js';
-import { currentAutomateState, restartIncompatibleDraft, validateAutomateUpdate } from './automate.js';
+const assert = require('node:assert/strict');
+const { test } = require('node:test');
+const Army = require('../setup.js');
+const Chess = require('../rules.js');
+const { currentAutomateState, restartIncompatibleDraft, validateAutomateUpdate } = require('../server.js');
 
 const seat = color => color === 'w' ? 0 : 1;
 const patch = (draft, runner = null, moves = []) => ({

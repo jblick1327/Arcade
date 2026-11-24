@@ -11,6 +11,8 @@ import router from './matches.js';
 const ids = Object.fromEntries('abcde'.split('').map((key) => [key, new mongoose.Types.ObjectId()]));
 const fourSlug = `four-player-test-${process.pid}`;
 const fourDir = `games/${fourSlug}`;
+const hookSlug = `hook-test-${process.pid}`;
+const hookDir = `games/${hookSlug}`;
 let docs;
 const clone = (doc) => ({ ...doc, players: [...doc.players], state: structuredClone(doc.state) });
 const matches = (doc, filter) => Object.entries(filter).every(([k, v]) => {
@@ -66,6 +68,15 @@ before(async () => {
   fs.mkdirSync(fourDir);
   fs.writeFileSync(`${fourDir}/index.html`, '<!doctype html>');
   fs.writeFileSync(`${fourDir}/game.json`, JSON.stringify({ mode: 'match', maxPlayers: 4 }));
+  // A minimal game with a server hook: only even numbers may be saved, and "reset" clears a stuck match.
+  fs.mkdirSync(hookDir);
+  fs.writeFileSync(`${hookDir}/index.html`, '<!doctype html>');
+  fs.writeFileSync(`${hookDir}/game.json`, JSON.stringify({ mode: 'match' }));
+  fs.writeFileSync(`${hookDir}/server.js`, `module.exports = {
+    view: ({ state, turn }) => (state === 'stuck' ? { state, turn, blocked: 'Stuck.' } : { state, turn }),
+    validateUpdate: (prev, actor, { state, turn }) => (state % 2 === 0 ? { state, turn } : null),
+    actions: { reset: { label: 'Reset', available: ({ state }) => state === 'stuck', run: () => ({ state: 0, turn: 0 }) } },
+  };`);
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => { req.session = { userId: as && String(as) }; next(); });
@@ -74,11 +85,15 @@ before(async () => {
   await new Promise((r) => server.once('listening', r));
   base = `http://127.0.0.1:${server.address().port}/api`;
 });
-after(() => { server.close(); fs.rmSync(fourDir, { recursive: true, force: true }); });
+after(() => {
+  server.close();
+  fs.rmSync(fourDir, { recursive: true, force: true });
+  fs.rmSync(hookDir, { recursive: true, force: true });
+});
 beforeEach(() => { docs = new Map(); as = ids.a; });
 
 async function restart(id, body) {
-  const r = await fetch(`${base}/matches/${id}/restart-draft`, {
+  const r = await fetch(`${base}/matches/${id}/actions/restart-draft`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
   });
   return { status: r.status, data: await r.json() };
@@ -117,7 +132,7 @@ test('restart is refused for healthy drafts, battles, finished matches and other
     put(id, fields);
     const r = await restart(id, { version: 3 });
     assert.equal(r.status, 409);
-    assert.equal(r.data.error, 'Draft restart is not available');
+    assert.equal(r.data.error, 'Action is not available');
     assert.equal(docs.get(String(id)).version, 3);
   }
 });
@@ -242,4 +257,36 @@ test('Automate keeps its two-player limit', async () => {
   assert.equal(joined.data.players.length, 2);
   as = ids.c;
   assert.equal((await request('POST', `/matches/${created.data.id}/join`)).status, 409);
+});
+
+test('a game server hook validates writes, can block play, and offers named actions', async () => {
+  const id = new mongoose.Types.ObjectId();
+  put(id, { game: hookSlug, state: 2, version: 0 });
+  assert.equal((await request('PUT', `/matches/${id}`, { version: 0, state: 3, turn: 1 })).status, 400);
+  const ok = await request('PUT', `/matches/${id}`, { version: 0, state: 4, turn: 1 });
+  assert.equal(ok.status, 200);
+  assert.deepEqual(ok.data.actions, []);
+
+  put(id, { game: hookSlug, state: 'stuck', version: 5 });
+  const read = await request('GET', `/matches/${id}`);
+  assert.equal(read.data.blocked, 'Stuck.');
+  assert.deepEqual(read.data.actions, [{ name: 'reset', label: 'Reset' }]);
+  assert.equal((await request('PUT', `/matches/${id}`, { version: 5, state: 6, turn: 1 })).status, 409, 'blocked matches refuse moves');
+  assert.equal((await request('POST', `/matches/${id}/actions/nope`, { version: 5 })).status, 409);
+  assert.equal((await request('POST', `/matches/${id}/actions/toString`, { version: 5 })).status, 409);
+  const reset = await request('POST', `/matches/${id}/actions/reset`, { version: 5 });
+  assert.equal(reset.status, 200);
+  assert.equal(reset.data.state, 0);
+  assert.equal(reset.data.blocked, null);
+});
+
+test('games without a hook keep the trusting defaults, and removed games cannot be written', async () => {
+  const id = new mongoose.Types.ObjectId();
+  put(id, { game: fourSlug, state: null, version: 0 });
+  const r = await request('PUT', `/matches/${id}`, { version: 0, state: { any: 'thing' }, turn: 1, result: { winner: 0 } });
+  assert.equal(r.status, 200);
+  assert.equal(r.data.status, 'done');
+  assert.deepEqual(r.data.actions, []);
+  put(id, { game: 'deleted-game', state: null, version: 0 });
+  assert.equal((await request('PUT', `/matches/${id}`, { version: 0, state: 1, turn: 1 })).status, 404);
 });
