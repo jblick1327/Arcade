@@ -1,0 +1,681 @@
+
+/* ==============================
+   REACHNID - GLOBAL STYLES
+================================ */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  font-family: 'Poppins', sans-serif;
+}
+
+body {
+  min-height: 100vh;
+  background: #f3f1fa;
+  color: #25213c;
+  transition: background 0.3s, color 0.3s;
+}
+
+/* ==============================
+   HEADER AND LOGO
+================================ */
+
+.navbar {
+  width: 100%;
+  min-height: 85px;
+  padding: 10px 7%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #ffffff;
+  border-bottom: 1px solid #e9e5f2;
+  box-shadow: 0 4px 20px rgba(32, 20, 65, 0.05);
+}
+
+/* REACHNID LOGO */
+
+.logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 260px;
+  height: 65px;
+  padding: 5px 12px;
+  background: #171326;
+  border: 1px solid #60408f;
+  border-radius: 10px;
+  box-shadow: 0 0 18px rgba(128, 85, 232, 0.22);
+  text-decoration: none;
+  overflow: hidden;
+  transition: 0.3s;
+}
+
+.logo:hover {
+  box-shadow: 0 0 25px rgba(128, 85, 232, 0.45);
+  transform: translateY(-2px);
+}
+
+.logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* LIGHT AND DARK MODE BUTTONS */
+
+.theme-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px;
+  border-radius: 30px;
+  background: #f0edfa;
+}
+
+.theme-btn {
+  border: none;
+  padding: 10px 17px;
+  border-radius: 25px;
+  background: transparent;
+  color: #77718c;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.25s;
+}
+
+.theme-btn.active {
+  background: #8055e8;
+  color: #ffffff;
+  box-shadow: 0 3px 12px rgba(128, 85, 232, 0.25);
+}
+
+/* ==============================
+   MAIN AUTHENTICATION LAYOUT
+================================ */
+
+.auth-layout {
+  min-height: 650px;
+  width: 100%;
+  padding: 65px 4%;
+  display: grid;
+  grid-template-columns:
+    minmax(260px, 1fr)
+    minmax(240px, 0.9fr)
+    minmax(260px, 1fr);
+  align-items: center;
+  gap: 35px;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+/* LOGIN AND REGISTER CARDS */
+
+.auth-card {
+  width: 100%;
+  max-width: 440px;
+  justify-self: center;
+  padding: 38px 32px;
+  background: #ffffff;
+  border: 1px solid #e9e4f3;
+  border-radius: 18px;
+  box-shadow: 0 15px 45px rgba(43, 29, 85, 0.08);
+  transition: background 0.3s, border 0.3s;
+}
+
+.card-heading {
+  margin-bottom: 30px;
+}
+
+.card-heading h1 {
+  font-size: 25px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #292440;
+}
+
+.card-heading p {
+  font-size: 13px;
+  color: #89849b;
+}
+
+/* FORM INPUTS */
+
+.form-group {
+  margin-bottom: 21px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4c4762;
+}
+
+.form-group input {
+  width: 100%;
+  height: 49px;
+  padding: 0 14px;
+  border: 1px solid #ded9eb;
+  border-radius: 9px;
+  background: #faf9fd;
+  outline: none;
+  color: #292440;
+  font-family: inherit;
+  font-size: 13px;
+  transition: 0.25s;
+}
+
+.form-group input:focus {
+  border-color: #8055e8;
+  box-shadow: 0 0 0 3px rgba(128, 85, 232, 0.12);
+}
+
+.form-group input::placeholder {
+  color: #aaa5b8;
+}
+
+/* LOGIN OPTIONS */
+
+.form-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin: 3px 0 25px;
+  font-size: 11px;
+  color: #77718c;
+}
+
+.form-options label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.form-options a,
+.card-footer a {
+  color: #8055e8;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+/* SUBMIT BUTTON */
+
+.submit-btn {
+  width: 100%;
+  height: 51px;
+  border: none;
+  border-radius: 9px;
+  background: linear-gradient(110deg, #7448dc, #a06df1);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: 0.25s;
+}
+
+.submit-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(128, 85, 232, 0.3);
+}
+
+.card-footer {
+  text-align: center;
+  margin-top: 25px;
+  color: #89849b;
+  font-size: 11px;
+  line-height: 1.8;
+}
+
+/* ==============================
+   ARCADE MACHINE
+================================ */
+
+.arcade-section {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  text-align: center;
+  min-width: 0;
+}
+
+.arcade-glow {
+  position: absolute;
+  width: 340px;
+  height: 340px;
+  background: rgba(133, 83, 244, 0.3);
+  filter: blur(85px);
+  border-radius: 50%;
+  z-index: 0;
+  animation: arcadeGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes arcadeGlow {
+  from {
+    opacity: 0.5;
+    transform: scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+.arcade-machine {
+  position: relative;
+  z-index: 1;
+  width: 220px;
+  height: 365px;
+  padding: 13px;
+  border-radius: 18px 18px 12px 12px;
+  background: linear-gradient(135deg, #34224f, #171326 70%);
+  border: 3px solid #60408f;
+  box-shadow:
+    0 0 25px rgba(128, 85, 232, 0.3),
+    0 20px 35px rgba(20, 10, 40, 0.2);
+}
+
+.arcade-top {
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  text-shadow: 0 0 12px #b38aff;
+}
+
+.arcade-screen-frame {
+  width: 100%;
+  height: 160px;
+  padding: 9px;
+  background: #0b0815;
+  border: 3px solid #8b63d9;
+  border-radius: 9px;
+  box-shadow: inset 0 0 15px rgba(144, 91, 255, 0.2);
+}
+
+.arcade-screen {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: radial-gradient(circle, #33205a, #100b20 75%);
+  color: #ffffff;
+  border-radius: 4px;
+}
+
+.screen-logo {
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-shadow: 0 0 12px #a875ff;
+}
+
+.screen-logo span {
+  color: #b68aff;
+}
+
+.screen-text {
+  margin-top: 17px;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  animation: blink 1.2s infinite;
+}
+
+.screen-coin {
+  margin-top: 9px;
+  color: #d5b8ff;
+  font-size: 13px;
+  text-shadow: 0 0 10px #b68aff;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.arcade-controls {
+  height: 95px;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+}
+
+.joystick {
+  width: 35px;
+  height: 35px;
+  position: relative;
+  border-radius: 50%;
+  background: #0d0a16;
+  border: 3px solid #7050a5;
+}
+
+.joystick span {
+  position: absolute;
+  width: 9px;
+  height: 28px;
+  left: 10px;
+  top: -18px;
+  border-radius: 5px;
+  background: #c6a3ff;
+  box-shadow: 0 0 10px #a875ff;
+}
+
+.arcade-buttons {
+  display: flex;
+  gap: 9px;
+  transform: rotate(-15deg);
+}
+
+.arcade-buttons span {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #a76aff;
+  box-shadow: 0 0 10px rgba(167, 106, 255, 0.7);
+}
+
+.arcade-bottom {
+  height: 40px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-top: 2px solid #60408f;
+}
+
+.arcade-slot {
+  width: 65px;
+  height: 7px;
+  border-radius: 10px;
+  background: #080612;
+  border: 1px solid #72529e;
+}
+
+/* ==============================
+   GAMING FEATURES SECTION
+================================ */
+
+.features-section {
+  width: 100%;
+  padding: 45px 7% 85px;
+  text-align: center;
+  background: #ebe8f5;
+  border-top: 1px solid #e2dced;
+  transition: background 0.3s;
+}
+
+.features-section > h2 {
+  font-size: 27px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  color: #8055e8;
+}
+
+.features-description {
+  margin-top: 10px;
+  color: #89849b;
+  font-size: 14px;
+}
+
+.features-container {
+  max-width: 1100px;
+  margin: 38px auto 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 25px;
+}
+
+/* FEATURE CARDS */
+
+.feature-item {
+  padding: 30px 22px;
+  background: #ffffff;
+  border: 1px solid #e5dff1;
+  border-radius: 16px;
+  box-shadow: 0 8px 25px rgba(43, 29, 85, 0.05);
+  transition: transform 0.25s, box-shadow 0.25s, background 0.3s;
+}
+
+.feature-item:hover {
+  transform: translateY(-7px);
+  box-shadow: 0 14px 30px rgba(116, 72, 220, 0.13);
+}
+
+.feature-icon {
+  width: 75px;
+  height: 75px;
+  margin: 0 auto 18px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 20px;
+  background: #f0eaff;
+  font-size: 38px;
+}
+
+.feature-item h3 {
+  margin-bottom: 10px;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: #8055e8;
+}
+
+.feature-item p {
+  max-width: 260px;
+  margin: 0 auto;
+  color: #89849b;
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+/* ==============================
+   DARK MODE
+================================ */
+
+body.dark-mode {
+  background: #14121f;
+  color: #f4f0ff;
+}
+
+body.dark-mode .navbar {
+  background: #201c30;
+  border-color: #332b48;
+}
+
+body.dark-mode .logo {
+  border-color: #8055e8;
+  box-shadow: 0 0 20px rgba(128, 85, 232, 0.3);
+}
+
+body.dark-mode .theme-controls {
+  background: #302943;
+}
+
+body.dark-mode .theme-btn {
+  color: #c5b9df;
+}
+
+body.dark-mode .theme-btn.active {
+  background: #9569ef;
+  color: #ffffff;
+}
+
+body.dark-mode .auth-card {
+  background: #211d31;
+  border-color: #38304e;
+  box-shadow: 0 15px 45px rgba(0, 0, 0, 0.2);
+}
+
+body.dark-mode .card-heading h1 {
+  color: #ffffff;
+}
+
+body.dark-mode .card-heading p,
+body.dark-mode .card-footer {
+  color: #aaa1c1;
+}
+
+body.dark-mode .form-group label {
+  color: #e5ddf5;
+}
+
+body.dark-mode .form-group input {
+  background: #302a43;
+  border-color: #49405e;
+  color: #ffffff;
+}
+
+body.dark-mode .form-group input::placeholder {
+  color: #9a91ae;
+}
+
+body.dark-mode .form-options {
+  color: #c5b9df;
+}
+
+body.dark-mode .features-section {
+  background: #1b1829;
+  border-color: #332b48;
+}
+
+body.dark-mode .features-description {
+  color: #b5a9cc;
+}
+
+body.dark-mode .feature-item {
+  background: #252038;
+  border-color: #39304f;
+}
+
+body.dark-mode .feature-icon {
+  background: #34294d;
+}
+
+body.dark-mode .feature-item p {
+  color: #b5a9cc;
+}
+
+/* ==============================
+   RESPONSIVE DESIGN
+================================ */
+
+@media (max-width: 1100px) {
+  .auth-layout {
+    grid-template-columns:
+      minmax(230px, 1fr)
+      minmax(200px, 0.8fr)
+      minmax(230px, 1fr);
+    gap: 18px;
+    padding: 45px 2%;
+  }
+
+  .auth-card {
+    padding: 30px 22px;
+  }
+
+  .arcade-machine {
+    transform: scale(0.9);
+  }
+}
+
+@media (max-width: 800px) {
+  .navbar {
+    gap: 15px;
+  }
+
+  .auth-layout {
+    grid-template-columns: 1fr;
+    gap: 45px;
+    padding: 40px 20px;
+  }
+
+  .auth-card {
+    max-width: 480px;
+  }
+
+  .arcade-section {
+    grid-row: 2;
+  }
+
+  .login-card {
+    grid-row: 1;
+  }
+
+  .register-card {
+    grid-row: 3;
+  }
+
+  .arcade-machine {
+    transform: none;
+  }
+
+  .features-container {
+    grid-template-columns: 1fr;
+    max-width: 480px;
+  }
+}
+
+@media (max-width: 480px) {
+  .navbar {
+    padding: 10px 4%;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .logo {
+    width: 225px;
+    height: 58px;
+  }
+
+  .theme-btn {
+    padding: 9px 11px;
+    font-size: 11px;
+  }
+
+  .auth-card {
+    padding: 28px 20px;
+  }
+
+  .card-heading h1 {
+    font-size: 22px;
+  }
+
+  .features-section {
+    padding: 40px 5% 60px;
+  }
+
+  .features-section > h2 {
+    font-size: 21px;
+    letter-spacing: 2px;
+  }
+}
+
+/* Shared navigation for the original sign-in screen */
+.site-nav { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:10px; }
+.nav-link { padding:10px 14px; border-radius:10px; text-decoration:none; color:#5d5473; font-size:13px; font-weight:600; }
+.nav-link:hover,.nav-link.active { background:#ede4ff; color:#6c3ad1; }
+body.dark-mode .nav-link { color:#c9c0d9; }
+body.dark-mode .nav-link:hover,body.dark-mode .nav-link.active { background:#372950; color:#d9c5ff; }
+@media(max-width:1040px) { .navbar { gap:16px; padding-inline:3%; flex-wrap:wrap; } .site-nav { order:3; width:100%; } }

@@ -1,0 +1,35 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Snake | REACHNID</title>
+  <link rel="stylesheet" href="/src/snake.css" />
+</head>
+<body>
+  <main class="game-container">
+    <h1>Snake</h1>
+    <p>Collect apples and beat your high score!</p>
+
+    <div class="scoreboard">
+      <span>Score: <strong id="score">0</strong></span>
+      <span>High Score: <strong id="highScore">0</strong></span>
+    </div>
+
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+
+    <p id="gameStatus">Press Start to play!</p>
+
+    <div class="controls">
+      <button id="startButton">Start Game</button>
+      <button id="restartButton">Restart</button>
+    </div>
+
+    <p>Use Arrow Keys or WASD to move.</p>
+    <a href="/games.html">Back to Games</a>
+  </main>
+
+  <script type="module" src="/src/snake.js"></script>
+</body>
+</html>
