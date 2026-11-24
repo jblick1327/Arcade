@@ -14,7 +14,8 @@ arcade/
   .env.example          MONGODB_URI, SESSION_SECRET, PORT
   vite.config.js        root: 'client'; dev proxy for /api, /games, /sdk -> http://localhost:3000
   ARCHITECTURE.md  GAMES.md  README.md
-  .github/workflows/ci.yml   runs npm test, npm run build and npm audit on every PR
+  .github/workflows/ci.yml   runs npm test, npm run build, the smoke test and npm audit on every PR
+  .github/pull_request_template.md
   sdk/arcade.js         what games include
   games/
     _template/          the starter game
@@ -23,6 +24,9 @@ arcade/
     index.js            app setup, static serving, starts listening
     models.js           User, Score, Match
     games.js            reads games/*/game.json and loads optional games/*/server.js hooks
+    memory-db.js        throwaway in-memory MongoDB (dev:local, smoke test, PR previews)
+    prefetch-mongod.js  build step: downloads mongod for PR previews only
+    smoke.js            boots the real server and checks the site loads (npm run test:smoke)
     routes/auth.js  routes/games.js  routes/matches.js
   client/
     index.html
@@ -30,14 +34,16 @@ arcade/
     src/pages/Home.jsx  Play.jsx  Login.jsx  Register.jsx
 ```
 
-Dependencies: `express`, `mongoose`, `express-session`, `connect-mongo`, `bcryptjs`, `dotenv`; `react`, `react-dom`, `react-router-dom`; dev: `vite`, `@vitejs/plugin-react`, `concurrently`. Keep it that way unless there is a good reason.
+Dependencies: `express`, `mongoose`, `express-session`, `connect-mongo`, `bcryptjs`, `dotenv`; `react`, `react-dom`, `react-router-dom`; dev: `vite`, `@vitejs/plugin-react`, `concurrently`, `mongodb-memory-server-core` (so nobody needs a database to run the site). Keep it that way unless there is a good reason.
 
 Scripts:
 
-- `npm run dev` — Express on 3000 (`node --watch server/index.js`) and Vite on 5173 together. Developers open `http://localhost:5173`.
+- `npm run dev` — Express on 3000 (`node --watch server/index.js`) and Vite on 5173 together, using the database in `.env`. Developers open `http://localhost:5173`.
+- `npm run dev:local` — the same, with `--memory-db`: a throwaway in-memory database, no `.env` needed. Data resets whenever the server restarts.
 - `npm test` — `test:platform` then `test:games`, with Node's built-in runner (no database needed).
 - `npm run test:platform` — `server/**/*.test.js` only; `npm run test:games` — every `games/*/tests/*.cjs`.
 - `npm run build` — Vite build to `client/dist`.
+- `npm run test:smoke` — after a build, starts the real server on an in-memory database and checks the health check, client, SDK, every game, registration, scores and match creation. Not part of `npm test`, because its first run downloads mongod.
 - `npm start` — Express only, serving `client/dist`.
 
 ## Free hosting: Render + MongoDB Atlas
@@ -51,6 +57,14 @@ The root [`render.yaml`](render.yaml) creates one **Free** Render web service in
 5. Open the assigned `https://…onrender.com` URL. `/healthz` should return `{"status":"ok"}`. Register, refresh to check that your login persists, then play a game and check its leaderboard. Use two accounts to check an Automate match.
 
 Free Render services sleep after 15 minutes without incoming traffic and can take about a minute to wake up. Leave payment details unset for a strictly free setup: if included bandwidth or build minutes run out, Render suspends the relevant service or builds instead of billing overages. Atlas Free clusters do not expire. See [Render's free limits](https://render.com/docs/free) and [Atlas Free setup](https://www.mongodb.com/docs/atlas/tutorial/deploy-free-tier-cluster/).
+
+### Throwaway database
+
+`server/index.js` uses an in-memory MongoDB (`server/memory-db.js`) instead of `MONGODB_URI` when it is started with `--memory-db` or when Render sets `IS_PULL_REQUEST=true`. `SESSION_SECRET` is optional in that mode. The mongod binary downloads on first use into `node_modules/.cache/mongodb-memory-server`; CI caches it, and Render's build runs `server/prefetch-mongod.js`, which downloads it only for previews. Production never loads the package.
+
+### PR previews
+
+Render can deploy each pull request to its own temporary URL. Turn it on in the service's **Previews** tab: **Manual** creates a preview only for PRs with `[render preview]` in the title; **Automatic** creates one for every PR. Previews copy production's environment, including `MONGODB_URI`, so the server ignores it and starts empty on the in-memory database. A preview's data is lost whenever it sleeps or redeploys. Previews of a Free service are free, but they share the workspace's monthly Free instance hours with production.
 
 ## Static serving (server/index.js)
 

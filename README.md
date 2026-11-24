@@ -13,4 +13,6 @@ Open pull requests against `master`. Run `npm test` and `npm run build` before s
 
 ## Run locally
 
-Install Node 22+ and have a MongoDB URI ready. Run `npm ci`, copy `.env.example` to `.env`, and set `MONGODB_URI` and `SESSION_SECRET`. Run `npm run dev` and open [localhost:5173](http://localhost:5173).
+Install Node 22+, run `npm ci`, then `npm run dev:local` and open [localhost:5173](http://localhost:5173). No database or `.env` needed: it uses a throwaway in-memory MongoDB (downloaded on first run, about 100 MB) that resets whenever the server restarts.
+
+To use a persistent database instead, copy `.env.example` to `.env`, set `MONGODB_URI` and `SESSION_SECRET`, and run `npm run dev`.
