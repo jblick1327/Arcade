@@ -19,6 +19,9 @@ function load(slug) {
     return null;
   }
   const num = (v, d) => (typeof v === 'number' && isFinite(v) && v > 0 ? v : d);
+  // Optional thumbnail: a plain image file name inside the game's folder.
+  const thumb = typeof j.thumbnail === 'string' && /^[\w-]+\.(png|jpe?g|webp|gif|svg)$/i.test(j.thumbnail)
+    && fs.existsSync(path.join(dir, j.thumbnail)) ? `/games/${slug}/${j.thumbnail}` : null;
   return {
     slug,
     title: typeof j.title === 'string' && j.title ? j.title : slug,
@@ -28,6 +31,7 @@ function load(slug) {
     scoreOrder: j.scoreOrder === 'asc' ? 'asc' : 'desc',
     width: num(j.width, 800),
     height: num(j.height, 600),
+    ...(thumb ? { thumbnail: thumb } : {}),
   };
 }
 

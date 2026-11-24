@@ -24,6 +24,8 @@ The folder must contain:
 
 `scoreOrder` is `"desc"` when a higher score is better and `"asc"` when lower is better (golf, fastest time). `width` and `height` are the size of the frame your game is shown in, in pixels.
 
+Optionally add `"thumbnail": "thumbnail.png"` to show a picture next to your game in the list. It must be an image file (png, jpg, webp, gif or svg) sitting directly in your folder; a 4:3 image looks best.
+
 ## 2. Use relative paths
 
 Write `src="player.png"` or `src="./js/main.js"`. Never start a path with `/` (the only exception is the SDK line below). If your paths are relative, the game works both on the site and when you open it on your own machine.
