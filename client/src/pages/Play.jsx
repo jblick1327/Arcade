@@ -19,8 +19,12 @@ function statusLine(m, showDev, maxPlayers) {
   return `${players} — in progress`;
 }
 
-/** An active Automate match whose legacy draft the current rules cannot continue. */
-const needsRestart = (m) => m?.game === 'automate' && m.status === 'active' && !!m.state?.restartRequired;
+/** Buttons for the named actions a game's server hook currently offers on a match. */
+function ActionButtons({ m, busy, onRun }) {
+  return (m?.actions || []).map((a) => (
+    <button key={a.name} type="button" disabled={busy} onClick={() => onRun(m, a)}>{a.label}</button>
+  ));
+}
 
 function CopyInvite() {
   const [status, setStatus] = useState('');
@@ -43,15 +47,14 @@ export default function Play({ user }) {
   const navigate = useNavigate();
   const matchId = params.get('match');
   const showDev = import.meta.env.DEV && params.get('dev') === '1';
-  const showAutomateDev = showDev && slug === 'automate';
 
   const [game, setGame] = useState(null); // null = loading, false = not found
   const [board, setBoard] = useState([]);
   const [match, setMatch] = useState(null);
   const [lobby, setLobby] = useState([]);
   const [reloadCount, setReloadCount] = useState(0);
-  const [restarting, setRestarting] = useState(false);
-  const [restartError, setRestartError] = useState('');
+  const [acting, setActing] = useState(false);
+  const [actionError, setActionError] = useState('');
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState('');
   const iframeRef = useRef(null);
@@ -68,8 +71,8 @@ export default function Play({ user }) {
 
   useEffect(() => { loadBoard(); }, [loadBoard]);
 
-  // A restart error belongs to the view it happened in.
-  useEffect(() => { setRestartError(''); setCancelError(''); }, [slug, matchId]);
+  // An action error belongs to the view it happened in.
+  useEffect(() => { setActionError(''); setCancelError(''); }, [slug, matchId]);
 
   useEffect(() => {
     setMatch(null);
@@ -112,21 +115,21 @@ export default function Play({ user }) {
     }
   }
 
-  async function restartDraft(m) {
-    if (!window.confirm('Restart this incompatible Automate draft for both players? All placed pieces will be cleared.')) return;
-    setRestartError('');
-    setRestarting(true);
-    const r = await api('POST', `/matches/${m.id}/restart-draft`, { version: m.version });
-    setRestarting(false);
+  async function runAction(m, action) {
+    if (action.confirm && !window.confirm(action.confirm)) return;
+    setActionError('');
+    setActing(true);
+    const r = await api('POST', `/matches/${m.id}/actions/${action.name}`, { version: m.version });
+    setActing(false);
     if (r.status === 200) {
       if (matchId === m.id) setMatch(r.data);
       else loadLobby();
     } else {
       if (r.data?.match && matchId === m.id) setMatch(r.data.match);
       if (!matchId) loadLobby();
-      // If the other player already restarted it, the refreshed match is the success case.
-      if (!(r.data?.match && !needsRestart(r.data.match))) {
-        setRestartError(r.data?.error || 'Could not restart the draft. Please try again.');
+      // If the other player already ran it, the refreshed match no longer offers it: that is success.
+      if (!(r.data?.match && !r.data.match.actions?.some((a) => a.name === action.name))) {
+        setActionError(r.data?.error || 'Could not complete that action. Please try again.');
       }
     }
   }
@@ -154,7 +157,7 @@ export default function Play({ user }) {
   return (
     <main>
       <h1>{game.title}</h1>
-      {restartError && <p role="alert">{restartError}</p>}
+      {actionError && <p role="alert">{actionError}</p>}
       {cancelError && <p role="alert">{cancelError}</p>}
 
       {isMatchGame && !matchId && (
@@ -165,10 +168,10 @@ export default function Play({ user }) {
             {lobby.map((m) => (
               <li key={m.id}>
                 {m.players[0].name}{game.maxPlayers === 4 ? ` (${m.players.length}/4 players)` : ''}{' '}
-                {needsRestart(m) && <span>Draft needs restart. </span>}
+                {m.blocked && <span>{m.blocked} </span>}
                 {user && (m.you !== null
-                  ? needsRestart(m)
-                    ? <button type="button" disabled={restarting} onClick={() => restartDraft(m)}>Restart draft</button>
+                  ? m.blocked
+                    ? <ActionButtons m={m} busy={acting} onRun={runAction} />
                     : <button type="button" onClick={() => openMatch(m.id)}>Resume</button>
                   : <button type="button" onClick={() => join(m.id)}>Join</button>)}
               </li>
@@ -179,15 +182,10 @@ export default function Play({ user }) {
 
       {isMatchGame && matchId && (
         <section>
-          <p>{match ? statusLine(match, showAutomateDev, game.maxPlayers) : 'Loading match…'}</p>
-          {needsRestart(match) && (
-            <p>This saved draft cannot continue under the new placement rules.{' '}
-              {inMatch
-                ? <button type="button" disabled={restarting} onClick={() => restartDraft(match)}>Restart draft for both players</button>
-                : 'Either player can restart the draft.'}
-            </p>
-          )}
-          {showAutomateDev && inMatch && match.status === 'waiting' && <CopyInvite key={matchId} />}
+          <p>{match ? statusLine(match, showDev, game.maxPlayers) : 'Loading match…'}</p>
+          {match?.blocked && <p>{match.blocked}</p>}
+          {match?.actions?.length > 0 && <p><ActionButtons m={match} busy={acting} onRun={runAction} /></p>}
+          {showDev && inMatch && match.status === 'waiting' && <CopyInvite key={matchId} />}
           {user && match && !inMatch && match.status === 'waiting' && (
             <p><button type="button" onClick={() => join(matchId)}>Join this match</button></p>
           )}

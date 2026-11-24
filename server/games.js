@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const GAMES_DIR = path.resolve('games');
 const SLUG = /^[a-z0-9][a-z0-9-]*$/;
@@ -41,4 +42,24 @@ export function listGames() {
     names = fs.readdirSync(GAMES_DIR, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
   } catch { /* no games dir */ }
   return names.map(load).filter(Boolean).sort((a, b) => a.title.localeCompare(b.title));
+}
+
+const hooks = new Map();
+
+/**
+ * A game may ship an optional `server.js` that the platform calls for match reads,
+ * writes and named actions (see "Game server hooks" in ARCHITECTURE.md). Games without one get the platform defaults.
+ * A hook that exists but fails to load throws, so its validation is never silently skipped.
+ */
+export async function getGameServer(slug) {
+  slug = String(slug);
+  if (!SLUG.test(slug)) return null;
+  const file = path.join(GAMES_DIR, slug, 'server.js');
+  if (!fs.existsSync(file)) return null;
+  if (!hooks.has(file)) {
+    const loading = import(pathToFileURL(file).href).then((mod) => mod.default ?? mod);
+    loading.catch(() => hooks.delete(file));
+    hooks.set(file, loading);
+  }
+  return hooks.get(file);
 }
