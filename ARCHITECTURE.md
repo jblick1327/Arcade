@@ -158,6 +158,8 @@ A game folder may contain `server.js` (CommonJS, like the rest of `games/`). `se
 
 Automate uses all three (`games/automate/server.js`): `view` migrates drafts saved under older rules and blocks ones it cannot continue, `validateUpdate` allows one legal placement or move at a time and computes the result from the position, and the `restart-draft` action clears a blocked draft. Deleting a game folder removes its hook with it; no platform code names a game.
 
+Tests follow the same split. `npm run test:platform` (`server/**/*.test.js`) uses only fixture games that the tests create and delete themselves, never a real game from `games/`. Each game's own tests, including tests of its hook, live in `games/<slug>/tests/*.cjs` and run with `npm run test:games`. `npm test` runs both.
+
 Make the write atomic: `findOneAndUpdate` filtered on `_id`, `version`, `status: 'active'`; if it matches nothing, answer `409` with the current match. Join also filters on `status: 'waiting'` and `version`, preventing concurrent joins from overfilling a lobby.
 
 ## Client

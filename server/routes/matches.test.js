@@ -3,11 +3,12 @@ import { after, before, beforeEach, test } from 'node:test';
 import express from 'express';
 import mongoose from 'mongoose';
 import fs from 'node:fs';
-import Army from '../../games/automate/setup.js';
 import { Match, User } from '../models.js';
 import router from './matches.js';
 
-// In-memory stand-ins for the few Mongoose calls the restart route makes, so no database is needed.
+// Platform tests use only fixture games created below, never a real game from games/, so any real
+// game can be deleted without touching this file. Game-specific tests live in games/<slug>/tests/.
+// In-memory stand-ins for the few Mongoose calls the match routes make, so no database is needed.
 const ids = Object.fromEntries('abcde'.split('').map((key) => [key, new mongoose.Types.ObjectId()]));
 const fourSlug = `four-player-test-${process.pid}`;
 const fourDir = `games/${fourSlug}`;
@@ -46,15 +47,9 @@ Match.create = async (fields) => {
 };
 User.find = async () => Object.entries(ids).map(([key, _id]) => ({ _id, name: key.toUpperCase() }));
 
-function legacyDraft() {
-  const draft = Army.create();
-  draft.armies.w[57] = 'N'; // pieces without kings: the old rules allowed this, the new ones cannot continue it
-  return { phase: 'draft', draft, runner: null, moves: [] };
-}
-
 function put(id, fields) {
-  docs.set(String(id), { _id: id, game: 'automate', players: [ids.a, ids.b], status: 'active',
-    turn: 0, state: legacyDraft(), winner: null, version: 3, ...fields });
+  docs.set(String(id), { _id: id, game: hookSlug, players: [ids.a, ids.b], status: 'active',
+    turn: 0, state: 'stuck', winner: null, version: 3, ...fields });
 }
 
 function waiting(id, fields = {}) {
@@ -68,14 +63,16 @@ before(async () => {
   fs.mkdirSync(fourDir);
   fs.writeFileSync(`${fourDir}/index.html`, '<!doctype html>');
   fs.writeFileSync(`${fourDir}/game.json`, JSON.stringify({ mode: 'match', maxPlayers: 4 }));
-  // A minimal game with a server hook: only even numbers may be saved, and "reset" clears a stuck match.
+  // A minimal two-player game with a server hook: only even numbers may be saved, a 'stuck' match
+  // is blocked, and the "reset" action clears it.
   fs.mkdirSync(hookDir);
   fs.writeFileSync(`${hookDir}/index.html`, '<!doctype html>');
   fs.writeFileSync(`${hookDir}/game.json`, JSON.stringify({ mode: 'match' }));
   fs.writeFileSync(`${hookDir}/server.js`, `module.exports = {
     view: ({ state, turn }) => (state === 'stuck' ? { state, turn, blocked: 'Stuck.' } : { state, turn }),
     validateUpdate: (prev, actor, { state, turn }) => (state % 2 === 0 ? { state, turn } : null),
-    actions: { reset: { label: 'Reset', available: ({ state }) => state === 'stuck', run: () => ({ state: 0, turn: 0 }) } },
+    actions: { reset: { label: 'Reset', available: ({ state, status }) => status === 'active' && state === 'stuck',
+      run: () => ({ state: null, turn: 0, winner: null }) } },
   };`);
   const app = express();
   app.use(express.json());
@@ -92,70 +89,77 @@ after(() => {
 });
 beforeEach(() => { docs = new Map(); as = ids.a; });
 
-async function restart(id, body) {
-  const r = await fetch(`${base}/matches/${id}/actions/restart-draft`, {
+async function action(id, name, body) {
+  const r = await fetch(`${base}/matches/${id}/actions/${name}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
   });
   return { status: r.status, data: await r.json() };
 }
 
-test('either participant can restart an incompatible draft, which clears it to White’s first placement', async () => {
+test('either participant can run an action the game offers', async () => {
   const id = new mongoose.Types.ObjectId();
-  for (const [player, version] of [[ids.a, 3], [ids.b, 3]]) {
+  for (const player of [ids.a, ids.b]) {
     put(id);
     as = player;
-    const r = await restart(id, { version });
+    const r = await action(id, 'reset', { version: 3 });
     assert.equal(r.status, 200);
     assert.equal(r.data.state, null);
     assert.equal(r.data.turn, 0);
     assert.equal(r.data.version, 4);
+    assert.equal(r.data.blocked, null);
   }
 });
 
-test('restart is refused for guests, outsiders, bad ids and missing matches', async () => {
+test('actions are refused for guests, outsiders, bad ids and missing matches', async () => {
   const id = new mongoose.Types.ObjectId();
   put(id);
   as = null;
-  assert.equal((await restart(id, { version: 3 })).status, 401);
+  assert.equal((await action(id, 'reset', { version: 3 })).status, 401);
   as = ids.c;
-  assert.equal((await restart(id, { version: 3 })).status, 403);
+  assert.equal((await action(id, 'reset', { version: 3 })).status, 403);
   as = ids.a;
-  assert.equal((await restart('not-an-id', { version: 3 })).status, 404);
-  assert.equal((await restart(new mongoose.Types.ObjectId(), { version: 3 })).status, 404);
+  assert.equal((await action('not-an-id', 'reset', { version: 3 })).status, 404);
+  assert.equal((await action(new mongoose.Types.ObjectId(), 'reset', { version: 3 })).status, 404);
   assert.equal(docs.get(String(id)).version, 3, 'nothing was written');
 });
 
-test('restart is refused for healthy drafts, battles, finished matches and other games', async () => {
+test('actions the game does not currently offer are refused', async () => {
   const id = new mongoose.Types.ObjectId();
-  const healthy = { phase: 'draft', draft: Army.create(), runner: null, moves: [], placementOnly: true };
-  for (const fields of [{ state: healthy }, { status: 'done' }, { game: 'other' }, { state: null }]) {
+  for (const [name, fields] of [
+    ['reset', { state: 2 }], // available() says no
+    ['reset', { status: 'done' }],
+    ['nope', {}], // not defined by the game
+    ['toString', {}], // inherited properties are not actions
+    ['reset', { game: fourSlug }], // game without a hook
+    ['reset', { game: 'deleted-game' }], // game folder removed
+  ]) {
     put(id, fields);
-    const r = await restart(id, { version: 3 });
-    assert.equal(r.status, 409);
+    const r = await action(id, name, { version: 3 });
+    assert.equal(r.status, 409, `${name} ${JSON.stringify(fields)}`);
     assert.equal(r.data.error, 'Action is not available');
     assert.equal(docs.get(String(id)).version, 3);
   }
 });
 
-test('a stale version gets a refresh, including when the other player already restarted', async () => {
+test('a stale version gets a refresh, including when the other player already ran the action', async () => {
   const id = new mongoose.Types.ObjectId();
   put(id);
-  assert.equal((await restart(id, { version: 3 })).status, 200);
+  assert.equal((await action(id, 'reset', { version: 3 })).status, 200);
   as = ids.b;
-  const late = await restart(id, { version: 3 });
+  const late = await action(id, 'reset', { version: 3 });
   assert.equal(late.status, 409);
   assert.equal(late.data.error, 'Match changed, refresh');
   assert.equal(late.data.match.version, 4);
-  assert.equal(late.data.match.state, null);
+  assert.deepEqual(late.data.match.actions, [], 'the refreshed match no longer offers it');
 });
 
-test('a write that loses the race to another update is reported as a conflict', async () => {
+test('an action that loses the race to another update is reported as a conflict', async () => {
   const id = new mongoose.Types.ObjectId();
   put(id);
   const original = Match.findOneAndUpdate;
   Match.findOneAndUpdate = async () => { docs.get(String(id)).version = 4; return null; };
   try {
-    const r = await restart(id, { version: 3 });
+    const r = await action(id, 'reset', { version: 3 });
     assert.equal(r.status, 409);
     assert.equal(r.data.match.version, 4);
   } finally {
@@ -248,8 +252,8 @@ test('four-player matches wait for all seats and accept turns and winners 2 and 
   assert.equal(end.data.winner, 3);
 });
 
-test('Automate keeps its two-player limit', async () => {
-  const created = await request('POST', '/games/automate/matches');
+test('match games default to two players', async () => {
+  const created = await request('POST', `/games/${hookSlug}/matches`);
   assert.equal(created.status, 201);
   as = ids.b;
   const joined = await request('POST', `/matches/${created.data.id}/join`);
@@ -259,25 +263,22 @@ test('Automate keeps its two-player limit', async () => {
   assert.equal((await request('POST', `/matches/${created.data.id}/join`)).status, 409);
 });
 
-test('a game server hook validates writes, can block play, and offers named actions', async () => {
+test('a game server hook validates writes, reports blocked matches and refuses moves on them', async () => {
   const id = new mongoose.Types.ObjectId();
-  put(id, { game: hookSlug, state: 2, version: 0 });
+  put(id, { state: 2, version: 0 });
   assert.equal((await request('PUT', `/matches/${id}`, { version: 0, state: 3, turn: 1 })).status, 400);
   const ok = await request('PUT', `/matches/${id}`, { version: 0, state: 4, turn: 1 });
   assert.equal(ok.status, 200);
   assert.deepEqual(ok.data.actions, []);
 
-  put(id, { game: hookSlug, state: 'stuck', version: 5 });
+  put(id, { version: 5 });
   const read = await request('GET', `/matches/${id}`);
   assert.equal(read.data.blocked, 'Stuck.');
   assert.deepEqual(read.data.actions, [{ name: 'reset', label: 'Reset' }]);
-  assert.equal((await request('PUT', `/matches/${id}`, { version: 5, state: 6, turn: 1 })).status, 409, 'blocked matches refuse moves');
-  assert.equal((await request('POST', `/matches/${id}/actions/nope`, { version: 5 })).status, 409);
-  assert.equal((await request('POST', `/matches/${id}/actions/toString`, { version: 5 })).status, 409);
-  const reset = await request('POST', `/matches/${id}/actions/reset`, { version: 5 });
-  assert.equal(reset.status, 200);
-  assert.equal(reset.data.state, 0);
-  assert.equal(reset.data.blocked, null);
+  as = ids.c;
+  assert.deepEqual((await request('GET', `/matches/${id}`)).data.actions, [], 'spectators get no actions');
+  as = ids.a;
+  assert.equal((await request('PUT', `/matches/${id}`, { version: 5, state: 6, turn: 1 })).status, 409);
 });
 
 test('games without a hook keep the trusting defaults, and removed games cannot be written', async () => {
