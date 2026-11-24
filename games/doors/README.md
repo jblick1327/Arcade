@@ -1,5 +1,7 @@
 # Doors
 
+_Author: Reachnid Group_
+
 Wait through Fibonacci countdowns and pass through endless doors. Press A, Z or
 Space, or tap the game. The game is shown at a larger integer pixel scale in a
 wider Arcade frame. Open the **Palettes** drawer below the screen to choose from

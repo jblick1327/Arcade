@@ -1,5 +1,7 @@
 # Adding your game
 
+_Author: Reachnid Group_
+
 Your game is a folder of plain web files. No build step, no accounts to set up, no API keys.
 
 ## 1. Make the folder
@@ -91,6 +93,6 @@ Set `"mode": "match"` in `game.json`. Matches default to 2 players; add `"maxPla
 - Redraw your board when `Arcade.match.onChange(fn)` fires. It runs whenever another player moves; the site checks for changes every second or two.
 - If players act at once, a conflicting write is rejected with `{ ok: false, reason: 'conflict' }` and the current match attached. Use that match and carry on.
 
-The server doesn't know your game's rules: it checks that it's the sender's turn and the version matches, and nothing else. A determined player could cheat by sending the server a move your game would never allow. That's fine for a casual game. Automate is the exception, with its own checks in `server/automate.js`, because it's a competitive game. If you want that, talk to the maintainer first.
+The server doesn't know your game's rules: it checks that it's the sender's turn and the version matches, and nothing else. A determined player could cheat by sending the server a move your game would never allow. That's fine for a casual game. Automate is the exception, with its own checks in `server/utils/automate_rules.js`, because it's a competitive game. If you want that, talk to the maintainer first.
 
 To try a match you need the full site running (see the README) and a separate logged-in browser session for each player (two by default, or four with `"maxPlayers": 4`).

@@ -4,10 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently -k -n server,client \"node --watch server/index.js\" \"vite\"",
+    "dev": "concurrently -k -n server,client \"node --watch server/server.js\" \"vite\"",
     "build": "vite build",
-    "start": "node server/index.js",
-    "test": "node --test \"server/**/*.test.js\" \"games/*/tests/*.cjs\""
+    "start": "node server/server.js",
+    "test": "node --test \"server/**/*.test.js\" \"games/*/tests/*.cjs\"",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -23,6 +25,7 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^6.3.0",
     "concurrently": "^8.2.2",
+    "prettier": "^3.10.1",
     "vite": "^8.3.7"
   },
   "engines": {

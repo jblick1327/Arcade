@@ -1,32 +1,34 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { api } from '../api.js';
+// Login.jsx - login page
+// Author: Reachnid Group
+// Centennial College - Fall 2026
 
-export default function Login({ setUser }) {
-  const [error, setError] = useState('');
-  const navigate = useNavigate();
+//=============================================================
+//                          IMPORTS
+//=============================================================
 
-  async function submit(e) {
-    e.preventDefault();
-    const f = new FormData(e.target);
-    const r = await api('POST', '/auth/login', { name: f.get('name'), password: f.get('password') });
-    if (r.status === 200) {
-      setUser(r.data);
-      navigate('/');
-    } else {
-      setError((r.data && r.data.error) || 'Could not log in');
-    }
-  }
+// import the shared name/password form
+import AuthForm from './AuthForm.jsx';
 
+//=============================================================
+//                         COMPONENT
+//=============================================================
+
+// login form - on success the user is signed in and sent home
+const Login = ({ setUser }) => {
   return (
-    <main>
-      <h1>Log in</h1>
-      <form onSubmit={submit}>
-        <p><label>Name <input name="name" autoComplete="username" required /></label></p>
-        <p><label>Password <input name="password" type="password" autoComplete="current-password" required /></label></p>
-        {error && <p role="alert">{error}</p>}
-        <p><button type="submit">Log in</button></p>
-      </form>
-    </main>
+    <AuthForm
+      title="Log in"
+      endpoint="/auth/login"
+      successStatus={200}
+      passwordAutoComplete="current-password"
+      fallbackError="Could not log in"
+      setUser={setUser}
+    />
   );
-}
+};
+
+//=============================================================
+//                          EXPORTS
+//=============================================================
+
+export default Login;

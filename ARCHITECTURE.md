@@ -1,5 +1,7 @@
 # Arcade — architecture
 
+_Author: Reachnid Group_
+
 How the site, the API and the SDK fit together. **You don't need this to add a game:** start with [GAMES.md](GAMES.md). Read this when you change the server, the client or the SDK, or when you build an online multiplayer game.
 
 A small MERN site that hosts web games made by a group of classmates. Players log in, play, and their scores are recorded. One game (Automate) is two-player online.
@@ -14,33 +16,36 @@ arcade/
   .env.example          MONGODB_URI, SESSION_SECRET, PORT
   vite.config.js        root: 'client'; dev proxy for /api, /games, /sdk -> http://localhost:3000
   ARCHITECTURE.md  GAMES.md  README.md
+  .prettierrc.json      code style (npm run format)
   .github/workflows/ci.yml   runs npm test, npm run build and npm audit on every PR
   sdk/arcade.js         what games include
   games/
     _template/          the starter game
-    automate/  scarab-21/
+    automate/  crowns-and-bones/  doors/  mern-stacker/  scarab-21/
   server/
-    index.js            app setup, static serving, starts listening
-    models.js           User, Score, Match
-    games.js            reads games/*/game.json
-    automate.js         server-side rules for Automate matches
-    routes/auth.js  routes/games.js  routes/matches.js
+    server.js           app setup, static serving, starts listening
+    models/             user_model.js  score_model.js  match_model.js
+    controllers/        auth_controller.js  game_controller.js  match_controller.js (request handlers)
+    routes/             auth_routes.js  game_routes.js  match_routes.js (URL -> controller)
+    middleware/         auth_middleware.js (requireAuth)
+    utils/              game_catalog.js (reads games/*/game.json)  automate_rules.js (Automate checks)
+    tests/              *.test.js
   client/
     index.html
     src/main.jsx  App.jsx  api.js  bridge.js (the site half of the SDK)
-    src/pages/Home.jsx  Play.jsx  Login.jsx  Register.jsx
+    src/pages/Home.jsx  Play.jsx  Login.jsx  Register.jsx  AuthForm.jsx (shared by Login/Register)
 ```
 
-Dependencies: `express`, `mongoose`, `express-session`, `connect-mongo`, `bcryptjs`, `dotenv`; `react`, `react-dom`, `react-router-dom`; dev: `vite`, `@vitejs/plugin-react`, `concurrently`. Keep it that way unless there is a good reason.
+Dependencies: `express`, `mongoose`, `express-session`, `connect-mongo`, `bcryptjs`, `dotenv`; `react`, `react-dom`, `react-router-dom`; dev: `vite`, `@vitejs/plugin-react`, `concurrently`, `prettier`. Keep it that way unless there is a good reason.
 
 Scripts:
 
-- `npm run dev` — Express on 3000 (`node --watch server/index.js`) and Vite on 5173 together. Developers open `http://localhost:5173`.
+- `npm run dev` — Express on 3000 (`node --watch server/server.js`) and Vite on 5173 together. Developers open `http://localhost:5173`.
 - `npm test` — server and game tests with Node's built-in runner (no database needed).
 - `npm run build` — Vite build to `client/dist`.
 - `npm start` — Express only, serving `client/dist`.
 
-## Static serving (server/index.js)
+## Static serving (server/server.js)
 
 Mount in this order:
 
@@ -52,7 +57,7 @@ Mount in this order:
 
 Sessions: `express-session` with `connect-mongo`, secret from `SESSION_SECRET`, cookie `httpOnly`, `sameSite: 'lax'`, 30 days, `saveUninitialized: false`. The session stores only `userId`.
 
-## Game registry (server/games.js)
+## Game registry (server/utils/game_catalog.js)
 
 On each request to the games endpoints, read the `games/` directory (no caching, so a new folder shows up on refresh). A folder is a game when:
 
@@ -72,7 +77,7 @@ On each request to the games endpoints, read the `games/` directory (no caching,
 
 A folder with a broken `game.json` is skipped and logged with `console.warn`; it must not crash the server. The game object returned by the API is these fields plus `slug`.
 
-## Data (server/models.js)
+## Data (server/models/)
 
 ```
 User   { name, nameLower (unique index), passwordHash, createdAt }
@@ -142,7 +147,7 @@ The match object returned everywhere (two-player Automate example; four-player m
 1. `404` if the match does not exist. `403` if the requester is not one of the players.
 2. `409 {error, match}` (including the current match object) if `status` is not `active`, or the requester's index is not `match.turn`, or `version` does not equal `match.version`.
 3. `400` if `turn` is not an occupied player seat (0 through `players.length - 1`), if `state` serialises to more than 64,000 characters, or if `result` is present and `result.winner` is not an occupied seat or `null`.
-4. For `automate` matches, the update must also pass `validateAutomateUpdate` in `server/automate.js` (one legal placement or move at a time; the result is computed from the position), otherwise `400`.
+4. For `automate` matches, the update must also pass `validateAutomateUpdate` in `server/utils/automate_rules.js` (one legal placement or move at a time; the result is computed from the position), otherwise `400`.
 5. Otherwise store `state` and `turn`, add 1 to `version`. If `result` is present, also set `winner` and `status: 'done'`.
 
 For Automate, saved drafts from older rule versions are checked when a match is read; if the current rules cannot continue one, its `state` is returned as `{ restartRequired: true, … }` and only `restart-draft` can change it.

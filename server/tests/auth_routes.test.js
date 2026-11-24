@@ -1,13 +1,29 @@
+// auth_routes.test.js - tests for registering, logging in, sessions and protected routes
+// Author: Reachnid Group
+// Centennial College - Fall 2026
+
+// Mongoose calls are replaced with in-memory stubs, so no database is needed
+
+//=============================================================
+//                          IMPORTS
+//=============================================================
+
 import assert from 'node:assert/strict';
 import { after, before, beforeEach, test } from 'node:test';
 import express from 'express';
 import session from 'express-session';
 import bcrypt from 'bcryptjs';
-import { User } from '../models.js';
-import { requireAuth } from '../auth.js';
-import router from './auth.js';
 
-// Exercise the real Express routes and session cookies without requiring MongoDB.
+// import the code being tested
+import User from '../models/user_model.js';
+import { requireAuth } from '../middleware/auth_middleware.js';
+import router from '../routes/auth_routes.js';
+
+//=============================================================
+//                         TEST SETUP
+//=============================================================
+
+// exercise the real Express routes and session cookies without requiring MongoDB
 let users;
 let nextId;
 User.create = async ({ name, nameLower, passwordHash }) => {
@@ -38,9 +54,12 @@ before(async () => {
 after(async () => {
   if (server) await new Promise((resolve) => server.close(resolve));
 });
-beforeEach(() => { users = new Map(); nextId = 0; });
+beforeEach(() => {
+  users = new Map();
+  nextId = 0;
+});
 
-// fetch does not persist cookies automatically in Node; keep one session per client.
+// fetch does not persist cookies automatically in Node; keep one session per client
 function client() {
   let cookie;
   return async (method, path, body) => {
@@ -48,7 +67,9 @@ function client() {
     if (cookie) headers.Cookie = cookie;
     if (body !== undefined) headers['Content-Type'] = 'application/json';
     const res = await fetch(base + path, {
-      method, headers, ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      method,
+      headers,
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
     const setCookie = res.headers.get('set-cookie');
     if (setCookie) cookie = setCookie.split(';')[0];
@@ -56,9 +77,16 @@ function client() {
   };
 }
 
+//=============================================================
+//                           TESTS
+//=============================================================
+
 test('registration hashes passwords and creates an authenticated session', async () => {
   const request = client();
-  const registered = await request('POST', '/auth/register', { name: 'Player_1', password: 'secret123' });
+  const registered = await request('POST', '/auth/register', {
+    name: 'Player_1',
+    password: 'secret123',
+  });
   assert.equal(registered.status, 201);
   assert.deepEqual(registered.data, { id: '1', name: 'Player_1' });
   const saved = users.get('player_1');
@@ -83,20 +111,39 @@ test('registration validates usernames and passwords', async () => {
 test('registration rejects duplicate usernames regardless of case', async () => {
   const first = client();
   const second = client();
-  assert.equal((await first('POST', '/auth/register', { name: 'PlayerTwo', password: 'secret123' })).status, 201);
-  assert.equal((await second('POST', '/auth/register', { name: 'playertwo', password: 'secret456' })).status, 409);
+  assert.equal(
+    (await first('POST', '/auth/register', { name: 'PlayerTwo', password: 'secret123' })).status,
+    201,
+  );
+  assert.equal(
+    (await second('POST', '/auth/register', { name: 'playertwo', password: 'secret456' })).status,
+    409,
+  );
   assert.equal(users.size, 1);
 });
 
 test('login, protected routes and logout enforce the session', async () => {
   const owner = client();
   const visitor = client();
-  assert.equal((await owner('POST', '/auth/register', { name: 'PlayerThree', password: 'secret123' })).status, 201);
+  assert.equal(
+    (await owner('POST', '/auth/register', { name: 'PlayerThree', password: 'secret123' })).status,
+    201,
+  );
   assert.deepEqual((await visitor('GET', '/me')).data, { user: null });
   assert.equal((await visitor('GET', '/protected-test')).status, 401);
-  assert.equal((await visitor('POST', '/auth/login', { name: 'unknown', password: 'secret123' })).status, 401);
-  assert.equal((await visitor('POST', '/auth/login', { name: 'PlayerThree', password: 'wrong-password' })).status, 401);
-  const login = await visitor('POST', '/auth/login', { name: 'playerthree', password: 'secret123' });
+  assert.equal(
+    (await visitor('POST', '/auth/login', { name: 'unknown', password: 'secret123' })).status,
+    401,
+  );
+  assert.equal(
+    (await visitor('POST', '/auth/login', { name: 'PlayerThree', password: 'wrong-password' }))
+      .status,
+    401,
+  );
+  const login = await visitor('POST', '/auth/login', {
+    name: 'playerthree',
+    password: 'secret123',
+  });
   assert.equal(login.status, 200);
   assert.deepEqual(login.data, { id: '1', name: 'PlayerThree' });
   assert.equal((await visitor('GET', '/protected-test')).status, 200);
