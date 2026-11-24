@@ -21,7 +21,7 @@ arcade/
   sdk/arcade.js         what games include
   games/
     _template/          the starter game
-    2048/  automate/  crowns-and-bones/  doors/  mern-stacker/  scarab-21/  snake/
+    2048/  automate/  crowns-and-bones/  doors/  mern-stacker/  retro-paddle/  scarab-21/  snake/
                         (a game folder may add server.js: see "Game server hooks",
                          and thumbnail.svg/png for its card on the Games page)
   server/

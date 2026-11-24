@@ -9,7 +9,7 @@ Arcade hosts browser games made by classmates, with leaderboards and online mult
 ## What's inside
 
 - **Pages:** Home, Games, Leaderboard, About Us, Contact, sign-in / register, and a play page for each game, with a light/dark theme.
-- **Games:** 2048, Automate (online, 2 players), Crowns & Bones (online, 4 players), Doors, MERN Stacker, Scarab 21 and Snake. Each one is a folder in `games/`.
+- **Games:** 2048, Automate (online, 2 players), Crowns & Bones (online, 4 players), Doors, MERN Stacker, Retro Paddle, Scarab 21 and Snake. Each one is a folder in `games/`.
 - **Code:** an Express + MongoDB API in `server/` (models, controllers, routes, middleware, utils), a React client in `client/src/` (components, hooks, pages, styles, utils), and the game SDK in `sdk/`.
 
 Made by the REACHNID team: Darryn, Adrian, Ahmed, Lex and James.

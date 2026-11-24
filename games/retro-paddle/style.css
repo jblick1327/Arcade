@@ -1,0 +1,32 @@
+/*
+  style.css - page styles for Retro Paddle (the game itself is drawn on the canvas)
+  Author: Reachnid Group
+  Centennial College - Fall 2026
+*/
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #000000;
+  overflow: hidden;
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The canvas is sized in JS to the largest 4:3 box that fits the window. */
+#game {
+  display: block;
+  background: #000000;
+  outline: 1px solid #1a1a1a; /* faint edge so the field is visible on wide screens */
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+#game:focus {
+  outline: 1px solid #1a1a1a;
+}
