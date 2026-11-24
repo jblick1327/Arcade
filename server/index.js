@@ -4,17 +4,31 @@ import session from 'express-session';
 import MongoStore from 'connect-mongo';
 import mongoose from 'mongoose';
 import path from 'node:path';
+import { randomBytes } from 'node:crypto';
 import authRoutes from './routes/auth.js';
 import gameRoutes from './routes/games.js';
 import matchRoutes from './routes/matches.js';
 
 const { MONGODB_URI, SESSION_SECRET, PORT = 3000 } = process.env;
-if (!MONGODB_URI || !SESSION_SECRET) {
-  console.error('Set MONGODB_URI and SESSION_SECRET in .env (see .env.example).');
+
+// `--memory-db` (npm run dev:local, the smoke test) and Render PR previews use a throwaway
+// in-memory database. Previews inherit production's MONGODB_URI, so they must never use it.
+const memoryDb = process.argv.includes('--memory-db') || process.env.IS_PULL_REQUEST === 'true';
+if (!memoryDb && (!MONGODB_URI || !SESSION_SECRET)) {
+  console.error('Set MONGODB_URI and SESSION_SECRET in .env (see .env.example), or run npm run dev:local.');
   process.exit(1);
 }
 
-await mongoose.connect(MONGODB_URI);
+let mongoUri = MONGODB_URI;
+if (memoryDb) {
+  const { startMemoryDb } = await import('./memory-db.js');
+  mongoUri = await startMemoryDb();
+  console.log('Using a throwaway in-memory database: everything is lost when the server stops.');
+}
+// Without a configured secret, sessions only need to last as long as the throwaway database.
+const sessionSecret = SESSION_SECRET || randomBytes(32).toString('hex');
+
+await mongoose.connect(mongoUri);
 
 const app = express();
 const isProduction = process.env.NODE_ENV === 'production';
@@ -28,7 +42,7 @@ app.get('/healthz', (req, res) => {
 
 app.use(express.json({ limit: '100kb' }));
 app.use(session({
-  secret: SESSION_SECRET,
+  secret: sessionSecret,
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({ client: mongoose.connection.getClient() }),

@@ -5,11 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently -k -n server,client \"node --watch server/index.js\" \"vite\"",
+    "dev:local": "concurrently -k -n server,client \"node --watch server/index.js --memory-db\" \"vite\"",
     "build": "vite build",
     "start": "node server/index.js",
     "test": "npm run test:platform && npm run test:games",
     "test:platform": "node --test \"server/**/*.test.js\"",
-    "test:games": "node --test \"games/*/tests/*.cjs\""
+    "test:games": "node --test \"games/*/tests/*.cjs\"",
+    "test:smoke": "node --test server/smoke.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -25,9 +27,15 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^6.3.0",
     "concurrently": "^8.2.2",
+    "mongodb-memory-server-core": "^11.4.0",
     "vite": "^8.3.7"
   },
   "engines": {
     "node": ">=22"
+  },
+  "config": {
+    "mongodbMemoryServer": {
+      "downloadDir": "node_modules/.cache/mongodb-memory-server"
+    }
   }
 }
