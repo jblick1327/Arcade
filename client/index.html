@@ -9,6 +9,16 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Arcade</title>
+
+    <!-- set the theme before the page draws (dark unless light was picked) - see hooks/useTheme.js -->
+    <script>
+      try {
+        document.documentElement.dataset.theme =
+          localStorage.getItem('reachnid-theme') === 'light' ? 'light' : 'dark';
+      } catch {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

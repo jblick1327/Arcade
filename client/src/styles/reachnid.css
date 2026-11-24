@@ -166,6 +166,10 @@ html[data-theme='dark'] .rn-root .rn-logo-dark {
   top: 50%;
   left: calc(0.4 * var(--u));
   transform: translateY(-50%);
+  transition:
+    transform 0.25s ease,
+    background 0.25s ease,
+    color 0.25s ease;
   width: calc(14.5 * var(--u));
   height: calc(14.5 * var(--u));
   border-radius: 50%;
@@ -179,14 +183,43 @@ html[data-theme='dark'] .rn-root .rn-logo-dark {
   width: calc(8 * var(--u));
   height: calc(8 * var(--u));
 }
-.rn-root .rn-moon {
+/* dark mode - the knob slides to the right (track inner width 35u - knob 14.5u - 2 x 0.4u gap) */
+html[data-theme='dark'] .rn-root .rn-knob {
+  transform: translate(calc(19.7 * var(--u)), -50%);
+  background: #2e294e;
+  color: #e9e7f5;
+}
+
+/* the small icon on the track: moon on the right in light mode, sun on the left in dark mode */
+.rn-root .rn-track-icon {
   position: absolute;
-  right: calc(4.5 * var(--u));
   top: 50%;
   transform: translateY(-50%);
   width: calc(6.5 * var(--u));
   height: calc(6.5 * var(--u));
   color: var(--rn-toggle-moon);
+  transition: opacity 0.25s ease;
+}
+.rn-root .rn-track-moon {
+  right: calc(4.5 * var(--u));
+}
+.rn-root .rn-track-sun {
+  left: calc(4.5 * var(--u));
+  opacity: 0;
+}
+html[data-theme='dark'] .rn-root .rn-track-moon {
+  opacity: 0;
+}
+html[data-theme='dark'] .rn-root .rn-track-sun {
+  opacity: 1;
+}
+
+/* no sliding for people who turn animations off */
+@media (prefers-reduced-motion: reduce) {
+  .rn-root .rn-knob,
+  .rn-root .rn-track-icon {
+    transition: none;
+  }
 }
 
 .rn-root .rn-pill {
