@@ -101,7 +101,7 @@ router.delete('/matches/:id', requireAuth, async (req, res) => {
   res.status(204).end();
 });
 
-/** Runs a named action that the match's game offers in its server hook (see GAMES.md). */
+/** Runs a named action that the match's game offers in its server hook (see "Game server hooks" in ARCHITECTURE.md). */
 router.post('/matches/:id/actions/:action', requireAuth, async (req, res) => {
   if (!validId(req.params.id)) return res.status(404).json({ error: 'Match not found' });
   const m = await Match.findById(req.params.id);

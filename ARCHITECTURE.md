@@ -35,7 +35,8 @@ Dependencies: `express`, `mongoose`, `express-session`, `connect-mongo`, `bcrypt
 Scripts:
 
 - `npm run dev` — Express on 3000 (`node --watch server/index.js`) and Vite on 5173 together. Developers open `http://localhost:5173`.
-- `npm test` — server and game tests with Node's built-in runner (no database needed).
+- `npm test` — `test:platform` then `test:games`, with Node's built-in runner (no database needed).
+- `npm run test:platform` — `server/**/*.test.js` only; `npm run test:games` — every `games/*/tests/*.cjs`.
 - `npm run build` — Vite build to `client/dist`.
 - `npm start` — Express only, serving `client/dist`.
 
@@ -153,26 +154,28 @@ The match object returned everywhere (two-player Automate example; four-player m
 `PUT` checks, in order:
 
 1. `404` if the match does not exist. `403` if the requester is not one of the players. `404` if the match's game folder no longer exists.
-2. `409 {error, match}` (including the current match object) if `status` is not `active`, the game's hook reports the match as `blocked`, or the requester's index is not `match.turn`, or `version` does not equal `match.version`.
+2. `409 {error, match}` (including the current match object) if `status` is not `active`, the game's hook reports the match as `blocked`, the requester's index is not the current turn (as returned by the hook's `view`, if any), or `version` does not equal `match.version`.
 3. `400` if `turn` is not an occupied player seat (0 through `players.length - 1`), if `state` serialises to more than 64,000 characters, or if `result` is present and `result.winner` is not an occupied seat or `null`.
 4. If the game has a hook with `validateUpdate`, it decides what is saved, including any result; `null` means `400 invalid-update`.
 5. Otherwise store `state` and `turn`, add 1 to `version`. If `result` is present, also set `winner` and `status: 'done'`.
 
+Make the write atomic: `findOneAndUpdate` filtered on `_id`, `version`, `status: 'active'`; if it matches nothing, answer `409` with the current match. Join also filters on `status: 'waiting'` and `version`, preventing concurrent joins from overfilling a lobby.
+
 #### Game server hooks
 
-A game folder may contain `server.js` (CommonJS, like the rest of `games/`). `server/games.js` loads it on first use; a hook that exists but fails to load makes the request fail rather than skip validation. Every export is optional:
+A game folder may contain `server.js` (CommonJS via `module.exports`, like the rest of `games/`). `server/games.js` loads it on first use and caches it; a hook that exists but fails to load makes the request fail rather than skip validation. Every export is optional:
 
 | Export | Called | Returns |
 |---|---|---|
 | `view({state, turn, status})` | on every read of a match, and before every write | `{state, turn, blocked?}` — the state as players should see it; `blocked` is a message shown when play cannot continue |
 | `validateUpdate(state, actor, {state, turn, result})` | on `PUT`, with the viewed current state and the writer's seat | the fields to `$set`, or `null` to refuse |
-| `actions: { name: { label, confirm?, available({state, status}), run({state, status, actor}) } }` | `available` when presenting a match, `run` on `POST /actions/:name` | `run` returns the fields to `$set`, or `null` |
+| `actions: { name: { label, confirm?, available({state, status}), run({state, status, actor}) } }` | `available` when presenting a match and before `run`; `run` on `POST /actions/:name` | `available` returns a boolean; `run` returns the fields to `$set`, or `null` |
+
+`view` is not applied before actions: `available` and `run` receive the raw stored state, so an action that depends on migrated state must apply the same logic itself (Automate's `restart-draft` does).
 
 Automate uses all three (`games/automate/server.js`): `view` migrates drafts saved under older rules and blocks ones it cannot continue, `validateUpdate` allows one legal placement or move at a time and computes the result from the position, and the `restart-draft` action clears a blocked draft. Deleting a game folder removes its hook with it; no platform code names a game.
 
 Tests follow the same split. `npm run test:platform` (`server/**/*.test.js`) uses only fixture games that the tests create and delete themselves, never a real game from `games/`. Each game's own tests, including tests of its hook, live in `games/<slug>/tests/*.cjs` and run with `npm run test:games`. `npm test` runs both.
-
-Make the write atomic: `findOneAndUpdate` filtered on `_id`, `version`, `status: 'active'`; if it matches nothing, answer `409` with the current match. Join also filters on `status: 'waiting'` and `version`, preventing concurrent joins from overfilling a lobby.
 
 ## Client
 
@@ -203,5 +206,6 @@ Lobby for `match` games. The current match comes from the `?match=<id>` query pa
 
 - Scores and results for other games rely on browser reports. Automate validates legal draft transitions, legal battle moves, and results, but the runner's browser still supplies the moves, so their Stockfish origin is unverified.
 - Games share the site's origin, so a game could call the API directly. They are asked not to in `GAMES.md`.
+- A game's `server.js` runs inside the Express process with full Node access (files, network, database, environment). Nothing sandboxes it; review is the only safeguard.
 - Match updates arrive by polling every 1.5 seconds. No real-time transport.
 - If the runner of an Automate battle closes their browser, the battle pauses until they return.

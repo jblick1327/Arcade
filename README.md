@@ -6,7 +6,7 @@ Arcade hosts browser games made by classmates, with leaderboards and online mult
 
 ## Contribute
 
-- [Add a game](GAMES.md) using `games/_template/` and a static file server.
+- [Add a game](GAMES.md) using `games/_template/` and a static file server. You don't need MongoDB or the full site for this.
 - [Read the architecture guide](ARCHITECTURE.md) for the client, server, SDK, and [hosting setup](ARCHITECTURE.md#free-hosting-render--mongodb-atlas).
 
 Open pull requests against `master`. Run `npm test` and `npm run build` before submitting.

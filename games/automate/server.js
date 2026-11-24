@@ -1,5 +1,5 @@
 /* Automate's server hook: the platform calls this for every read, write and action on an
-   Automate match, so the server stays authoritative over drafts and moves (see GAMES.md). */
+   Automate match, so the server stays authoritative over drafts and moves (see "Game server hooks" in ARCHITECTURE.md). */
 const { isDeepStrictEqual } = require('node:util');
 const Army = require('./setup.js');
 const Chess = require('./rules.js');

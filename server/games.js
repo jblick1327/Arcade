@@ -48,7 +48,7 @@ const hooks = new Map();
 
 /**
  * A game may ship an optional `server.js` that the platform calls for match reads,
- * writes and named actions (see GAMES.md). Games without one get the platform defaults.
+ * writes and named actions (see "Game server hooks" in ARCHITECTURE.md). Games without one get the platform defaults.
  * A hook that exists but fails to load throws, so its validation is never silently skipped.
  */
 export async function getGameServer(slug) {
