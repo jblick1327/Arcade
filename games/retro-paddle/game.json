@@ -1,0 +1,9 @@
+{
+  "title": "Retro Paddle",
+  "description": "Early-1970s arcade tennis: two white paddles, a square ball, first to 11. Play the AI or a friend.",
+  "mode": "score",
+  "scoreOrder": "desc",
+  "width": 800,
+  "height": 600,
+  "thumbnail": "thumbnail.svg"
+}
