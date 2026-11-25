@@ -1,8 +1,20 @@
+// tests-audio.cjs - tests for the Automate sound effects
+// Author: Reachnid Group
+// Centennial College - Fall 2026
+
+//=============================================================
+//                          IMPORTS
+//=============================================================
+
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const { test } = require('node:test');
+
+//=============================================================
+//                           TESTS
+//=============================================================
 
 test('Automate plays decoded samples by default and respects mute', async () => {
   const played = [];
@@ -13,17 +25,30 @@ test('Automate plays decoded samples by default and respects mute', async () => 
       return { gain: { setTargetAtTime() {} }, connect() {} };
     }
     createBufferSource() {
-      return { playbackRate: {}, connect() {}, start() { played.push(this.buffer); } };
+      return {
+        playbackRate: {},
+        connect() {},
+        start() {
+          played.push(this.buffer);
+        },
+      };
     }
-    async decodeAudioData(file) { return file; }
+    async decodeAudioData(file) {
+      return file;
+    }
   }
   const window = { AudioContext };
   const document = { addEventListener() {} };
-  const fetch = async url => ({
+  const fetch = async (url) => ({
     ok: fs.statSync(path.join(__dirname, '..', url)).isFile(),
     arrayBuffer: async () => path.basename(url, '.wav'),
   });
-  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../audio.js'), 'utf8'), { window, document, fetch, console });
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../audio.js'), 'utf8'), {
+    window,
+    document,
+    fetch,
+    console,
+  });
   const audio = window.AutomateAudio;
   audio.play('move');
   assert.deepEqual(played, [], 'Decoding plays no placeholder');

@@ -1,15 +1,28 @@
+// rules.cjs - tests for the Scarab 21 rules
+// Author: Reachnid Group
+// Centennial College - Fall 2026
+
+//=============================================================
+//                          IMPORTS
+//=============================================================
+
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
 const { total, canPlay, newGame, play, preview } = require('../rules.js');
 
 const card = (rank, suit = 'clubs') => ({ rank, suit });
-const pile = (...ranks) => ranks.map((rank, i) => card(rank, ['clubs', 'diamonds', 'hearts', 'spades'][i % 4]));
+const pile = (...ranks) =>
+  ranks.map((rank, i) => card(rank, ['clubs', 'diamonds', 'hearts', 'spades'][i % 4]));
 const deal = (cards, columns) => ({
   ...newGame(),
   card: cards[0],
   deck: [...cards.slice(1)].reverse(),
   columns: columns || Array.from({ length: 5 }, () => []),
 });
+
+//=============================================================
+//                           TESTS
+//=============================================================
 
 test('soft aces become low as needed, and face cards count as ten', () => {
   assert.equal(total(pile('A', 'A')), 12);
@@ -50,7 +63,10 @@ test('Double Blackjack requires consecutive suited spade and heart queen clears'
   const spades = [card('A', 'spades'), card('Q', 'spades')];
   const hearts = [card('Q', 'hearts'), card('A', 'hearts')];
 
-  for (const [first, second] of [[spades, hearts], [hearts, spades]]) {
+  for (const [first, second] of [
+    [spades, hearts],
+    [hearts, spades],
+  ]) {
     const game = deal([...first, card('3'), ...second, card('2')]);
     assert.deepEqual(play(game, 0), []);
     assert.deepEqual(play(game, 0), [['Blackjack', 21]]);
@@ -83,18 +99,24 @@ test('Straight clears all columns in any order', () => {
 test('Five of a Kind clears equal totals of 16 and leaves lower totals alone', () => {
   for (const value of [15, 16, 17, 18, 19, 20]) {
     const rank = String(value - 10);
-    const columns = Array.from({ length: 5 }, (_, i) => i === 4 ? pile('J') : pile('J', rank));
+    const columns = Array.from({ length: 5 }, (_, i) => (i === 4 ? pile('J') : pile('J', rank)));
     const game = deal(pile(rank, '2'), columns);
     const qualifies = value >= 16;
     assert.deepEqual(play(game, 4), qualifies ? [['5 of a Kind', 100]] : []);
-    assert.equal(game.columns.every((column) => !column.length), qualifies);
+    assert.equal(
+      game.columns.every((column) => !column.length),
+      qualifies,
+    );
   }
 });
 
 test('a deck starts with 52 distinct cards', () => {
   const game = newGame();
   assert.equal(game.deck.length, 51);
-  assert.equal(new Set([game.card, ...game.deck].map(({ rank, suit }) => `${rank} ${suit}`)).size, 52);
+  assert.equal(
+    new Set([game.card, ...game.deck].map(({ rank, suit }) => `${rank} ${suit}`)).size,
+    52,
+  );
 });
 
 test('depleting the draw pile reshuffles discards and preserves cards in play', () => {
@@ -110,7 +132,13 @@ test('depleting the draw pile reshuffles discards and preserves cards in play', 
 });
 
 test('illegal placement changes nothing, and no legal columns ends the game', () => {
-  const game = deal(pile('10', 'K', '4'), [pile('6', '7'), pile('6', '7'), pile('6', '7'), pile('6', '7'), pile('8')]);
+  const game = deal(pile('10', 'K', '4'), [
+    pile('6', '7'),
+    pile('6', '7'),
+    pile('6', '7'),
+    pile('6', '7'),
+    pile('8'),
+  ]);
   const before = structuredClone(game);
   assert.equal(play(game, 0), null);
   assert.deepEqual(game, before);

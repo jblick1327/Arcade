@@ -1,5 +1,7 @@
 # Scarab 21
 
+_Author: Reachnid Group_
+
 Play one card at a time into five columns. Click an arrow or press 1–5. A column clears at 21 or after five legal cards. The run ends when the draw fits nowhere.
 
 | Clear | Points |

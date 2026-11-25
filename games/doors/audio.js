@@ -1,5 +1,18 @@
-/* Original tracker songs rendered offline; browser playback has no sound-chip VM. */
-"use strict";
+// audio.js - music and sound effect playback for Doors
+// Author: Reachnid Group
+// Centennial College - Fall 2026
+
+// Original tracker songs rendered offline; browser playback has no sound-chip VM.
+//
+// each song is split into a "body" track and an "effects" track. While a sound effect plays, the
+// effects track is muted, which mimics the Game Boy sharing one channel between music and SFX.
+
+'use strict';
+
+//=============================================================
+//                        AUDIO PLAYER
+//=============================================================
+
 class DoorAudio {
   constructor(data) {
     this.data = data;
@@ -13,39 +26,56 @@ class DoorAudio {
     this.soundToken = 0;
     this.ready = this.prepare();
   }
+  // decode every embedded (base64 data URI) song part and sound effect
   async prepare() {
-    const decode = async entry => {
+    const decode = async (entry) => {
       const uri = entry.data;
-      if (!uri) throw new Error("Missing embedded audio asset");
-      const raw = atob(uri.slice(uri.indexOf(",") + 1));
-      const bytes = Uint8Array.from(raw, char => char.charCodeAt(0));
+      if (!uri) throw new Error('Missing embedded audio asset');
+      const raw = atob(uri.slice(uri.indexOf(',') + 1));
+      const bytes = Uint8Array.from(raw, (char) => char.charCodeAt(0));
       const buffer = await this.context.decodeAudioData(bytes.buffer);
       this.buffers.set(entry, buffer);
     };
     await Promise.all([
-      ...Object.values(this.data.music).flatMap(song => [decode(song.body), decode(song.effects)]),
-      ...Object.values(this.data.sfx).map(decode)
+      ...Object.values(this.data.music).flatMap((song) => [
+        decode(song.body),
+        decode(song.effects),
+      ]),
+      ...Object.values(this.data.sfx).map(decode),
     ]);
   }
+  // enable audio after the first user gesture, and start any music that was requested
   unlock() {
-    if (this.enabled) { this.context.resume().catch(() => {}); return; }
+    if (this.enabled) {
+      this.context.resume().catch(() => {});
+      return;
+    }
     this.enabled = true;
     this.context.resume().catch(() => {});
     if (this.name) this.music(this.name);
   }
+  // loop the named song (or stop all music when `name` is null)
   music(name) {
     this.name = name;
-    for (const source of this.sources) { try { source.stop(); } catch (_) {} }
+    for (const source of this.sources) {
+      try {
+        source.stop();
+      } catch (_) {}
+    }
     this.sources.length = 0;
     this.effectsGain = null;
     if (!name || !this.enabled) return;
     const song = this.data.music[name];
     if (!song) return;
     const at = this.context.currentTime;
-    for (const [part, muted] of [[song.body, false], [song.effects, true]]) {
+    for (const [part, muted] of [
+      [song.body, false],
+      [song.effects, true],
+    ]) {
       const buffer = this.buffers.get(part);
       if (!buffer) continue;
-      const source = this.context.createBufferSource(), gain = this.context.createGain();
+      const source = this.context.createBufferSource(),
+        gain = this.context.createGain();
       source.buffer = buffer;
       source.loop = true;
       source.loopStart = song.loopStart;
@@ -57,11 +87,17 @@ class DoorAudio {
       this.sources.push(source);
     }
   }
+  // play a sound effect unless a higher-priority one is still playing
   sfx(name, priority = 0) {
     if (!this.enabled) return;
-    const entry = this.data.sfx[name], at = this.context.currentTime;
+    const entry = this.data.sfx[name],
+      at = this.context.currentTime;
     if (!entry || (at < this.sfxUntil && priority < this.sfxPriority)) return;
-    if (this.effectSource) { try { this.effectSource.stop(); } catch (_) {} }
+    if (this.effectSource) {
+      try {
+        this.effectSource.stop();
+      } catch (_) {}
+    }
     const token = ++this.soundToken;
     this.sfxPriority = priority;
     this.sfxUntil = at + entry.duration;
@@ -81,6 +117,10 @@ class DoorAudio {
     source.start(at);
     this.effectSource = source;
   }
-  suspend() { this.context.suspend().catch(() => {}); }
-  resume() { if (this.enabled) this.context.resume().catch(() => {}); }
+  suspend() {
+    this.context.suspend().catch(() => {});
+  }
+  resume() {
+    if (this.enabled) this.context.resume().catch(() => {});
+  }
 }

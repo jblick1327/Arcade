@@ -1,5 +1,7 @@
 # Scarab 21 audio
 
+_Author: Reachnid Group_
+
 The placement cue is a 130 ms softened card-slide rustle adapted from
 Kenney Vleugels's [Casino Audio 1.1](https://kenney.nl/assets/casino-audio)
 (`card-slide-2.ogg`, [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)).

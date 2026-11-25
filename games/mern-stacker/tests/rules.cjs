@@ -1,9 +1,24 @@
+// rules.cjs - tests for the MERN Stacker rules
+// Author: Reachnid Group
+// Centennial College - Fall 2026
+
+//=============================================================
+//                          IMPORTS
+//=============================================================
+
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
 const R = require('../rules.js');
 
+//=============================================================
+//                           TESTS
+//=============================================================
+
 test('blocks stack bottom-up in architecture order, not acronym order', () => {
-  assert.deepEqual([0, 1, 2, 3, 4, 5].map((i) => R.blockFor(i).name), ['MongoDB', 'Node', 'Express', 'React', 'MongoDB', 'Node']);
+  assert.deepEqual(
+    [0, 1, 2, 3, 4, 5].map((i) => R.blockFor(i).name),
+    ['MongoDB', 'Node', 'Express', 'React', 'MongoDB', 'Node'],
+  );
 });
 
 test('every layer has its own perfect and failure lines', () => {
@@ -20,7 +35,7 @@ test('scope cuts escalate in order and then run out', () => {
 });
 
 test('a release ships when a React block completes a set', () => {
-  // Level 0 is the starting MongoDB block, so levels 3, 7, 11 are React.
+  // level 0 is the starting MongoDB block, so levels 3, 7, 11 are React
   assert.deepEqual([1, 2, 3, 4, 7, 11].map(R.releaseAt), [0, 0, 1, 0, 2, 3]);
   for (const level of [3, 7, 11]) assert.equal(R.blockFor(level).name, 'React');
   assert.equal(R.releaseLabel(1), 'v1.0.0: MVP shipped!');
@@ -86,6 +101,12 @@ test('ranks are non-decreasing in score and the top rank is reachable', () => {
 });
 
 test('pick always returns an item from the list', () => {
-  assert.equal(R.pick(['a', 'b', 'c'], () => 0.999999), 'c');
-  assert.equal(R.pick(['a', 'b', 'c'], () => 0), 'a');
+  assert.equal(
+    R.pick(['a', 'b', 'c'], () => 0.999999),
+    'c',
+  );
+  assert.equal(
+    R.pick(['a', 'b', 'c'], () => 0),
+    'a',
+  );
 });

@@ -4,14 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently -k -n server,client \"node --watch server/index.js\" \"vite\"",
-    "dev:local": "concurrently -k -n server,client \"node --watch server/index.js --memory-db\" \"vite\"",
+    "dev": "concurrently -k -n server,client \"node --watch server/server.js\" \"vite\"",
+    "dev:local": "concurrently -k -n server,client \"node --watch server/server.js --memory-db\" \"vite\"",
     "build": "vite build",
-    "start": "node server/index.js",
+    "start": "node server/server.js",
     "test": "npm run test:platform && npm run test:games",
     "test:platform": "node --test \"server/**/*.test.js\"",
     "test:games": "node --test \"games/*/tests/*.cjs\"",
-    "test:smoke": "node --test server/smoke.js"
+    "test:smoke": "node --test server/smoke.js",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -28,6 +30,7 @@
     "@vitejs/plugin-react": "^6.3.0",
     "concurrently": "^8.2.2",
     "mongodb-memory-server-core": "^11.4.0",
+    "prettier": "^3.10.1",
     "vite": "^8.3.7"
   },
   "engines": {

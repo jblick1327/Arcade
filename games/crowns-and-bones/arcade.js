@@ -1,13 +1,43 @@
-/* Four-player Arcade transport. Game rules and presentation stay in index.html. */
+// arcade.js - connects Crowns & Bones to Arcade online matches
+// Author: Reachnid Group
+// Centennial College - Fall 2026
+
+// four-player Arcade transport. Game rules and presentation stay in game.js.
+//
+// the game calls changed() after every action. When it is this seat's turn, the adapter saves
+// the whole game state to the match; moves by other seats arrive through Arcade.match.onChange
+// and replace the local state. Without a match the game simply runs as local hot-seat play.
+
 (function () {
   'use strict';
-  let game, match = null, ready = false, saving = false, applying = false, uncertain = false;
-  let acknowledged = '', error = '', version = -1;
-  const readActions = new Set(['closeFolio', 'boardSize', 'dismissWinner', 'reloadMatch']);
-  const localActions = new Set(['saveGame', 'loadGame', 'resetGame']);
-  const clone = value => JSON.parse(JSON.stringify(value));
 
-  // Selection, open apparatus and dismissed notices belong to each browser, not the match.
+  //=============================================================
+  //                           STATE
+  //=============================================================
+
+  // game:         the engine from game.js ({ state, replace, render, fresh })
+  // acknowledged: JSON of the last state the server confirmed, to skip no-op saves
+  // uncertain:    a save may or may not have landed; block input until reloaded
+  let game,
+    match = null,
+    ready = false,
+    saving = false,
+    applying = false,
+    uncertain = false;
+  let acknowledged = '',
+    error = '',
+    version = -1;
+  // actions that only change this browser's view, allowed even when it is not our turn
+  const readActions = new Set(['closeFolio', 'boardSize', 'dismissWinner', 'reloadMatch']);
+  // save/load/reset: local play only
+  const localActions = new Set(['saveGame', 'loadGame', 'resetGame']);
+  const clone = (value) => JSON.parse(JSON.stringify(value));
+
+  //=============================================================
+  //                    PERMISSIONS & STATUS
+  //=============================================================
+
+  // selection, open apparatus and dismissed notices belong to each browser, not the match
   function snapshot(state) {
     const copy = clone(state);
     copy.selectedTab = 'monopoly';
@@ -17,16 +47,30 @@
     delete copy.deployingIndex;
     return copy;
   }
-  function actor(state) { return state.auction ? state.auction.actor : state.turnIndex; }
-  function canAct() {
-    return ready && !saving && !uncertain && (!match ||
-      (match.status === 'active' && !!match.state && match.you !== null && match.turn === match.you));
+  // seat that acts next: the current bidder during an auction, otherwise the player to move
+  function actor(state) {
+    return state.auction ? state.auction.actor : state.turnIndex;
   }
+  // true when this browser may change the game (always, in local play)
+  function canAct() {
+    return (
+      ready &&
+      !saving &&
+      !uncertain &&
+      (!match ||
+        (match.status === 'active' &&
+          !!match.state &&
+          match.you !== null &&
+          match.turn === match.you))
+    );
+  }
+  // true when the data-act `action` may be used right now
   function allowed(action) {
     if (readActions.has(action)) return true;
     if (localActions.has(action)) return ready && !match;
     return canAct();
   }
+  // connection / turn status line shown in #arcade-status
   function status() {
     if (!ready) return 'Connecting to Arcade…';
     if (error) return error;
@@ -38,10 +82,15 @@
     if (saving) return `${seat} · Saving move…`;
     const name = game.state.players[match.turn]?.name || 'Player';
     const action = game.state.auction
-      ? (match.you === match.turn ? 'Your bid' : name + ' to bid')
-      : (match.you === match.turn ? 'Your turn' : name + ' to play');
+      ? match.you === match.turn
+        ? 'Your bid'
+        : name + ' to bid'
+      : match.you === match.turn
+        ? 'Your turn'
+        : name + ' to play';
     return `${seat} · ${action}`;
   }
+  // after each render: update the status line and disable controls that are not allowed
   function decorate() {
     const node = document.querySelector('#arcade-status');
     if (node) node.textContent = status();
@@ -49,13 +98,21 @@
       if (!allowed(el.dataset.act)) el.disabled = true;
     }
     if (!canAct()) {
-      for (const el of document.querySelectorAll('[data-domino], [data-square]')) el.disabled = true;
+      for (const el of document.querySelectorAll('[data-domino], [data-square]'))
+        el.disabled = true;
     }
   }
+
+  //=============================================================
+  //                  SYNCING WITH THE SERVER
+  //=============================================================
+
+  // adopt a newer match from the server and load its state into the game
   function accept(incoming, force = false) {
     if (!incoming || (!force && incoming.version <= version)) return;
     if (incoming.version < version) return;
-    match = clone(incoming); version = incoming.version;
+    match = clone(incoming);
+    version = incoming.version;
     if (match.state) {
       acknowledged = JSON.stringify(snapshot(match.state));
       applying = true;
@@ -63,6 +120,7 @@
       applying = false;
     } else game.render();
   }
+  // save `next` to the match, then reconcile with whatever the server reports
   async function publish(next) {
     const before = version;
     let result;
@@ -70,7 +128,9 @@
       const patch = { state: next, turn: actor(next) };
       if (next.winner !== null) patch.result = { winner: next.winner };
       result = await window.Arcade.match.update(patch);
-    } catch { result = { ok: false, reason: 'network' }; }
+    } catch {
+      result = { ok: false, reason: 'network' };
+    }
     saving = false;
     if (result.match) {
       error = result.ok ? '' : 'The match changed. The current position has been restored.';
@@ -78,85 +138,149 @@
       const latest = window.Arcade.match.get();
       accept(latest && latest.version > result.match.version ? latest : result.match, true);
     } else if (version > before) {
-      // A newer polled position resolves an ambiguous update response.
-      error = ''; uncertain = false;
+      // A newer polled position resolves an ambiguous update response
+      error = '';
+      uncertain = false;
       accept(match, true);
     } else {
       error = 'Move not confirmed. Reload the match before continuing.';
       uncertain = true;
       if (acknowledged) {
-        applying = true; game.replace(JSON.parse(acknowledged)); applying = false;
+        applying = true;
+        game.replace(JSON.parse(acknowledged));
+        applying = false;
       }
       game.render();
     }
   }
+  // called by the game after every action: save the new state when it is our turn
   function changed() {
     if (!ready || !match || applying || saving || uncertain || match.status !== 'active') return;
     if (match.you === null || match.turn !== match.you) return;
-    const next = snapshot(game.state), encoded = JSON.stringify(next);
+    const next = snapshot(game.state),
+      encoded = JSON.stringify(next);
     if (encoded === acknowledged) return;
     if (encoded.length > 64000) {
       error = 'This position exceeds the match size limit. Reload the match.';
-      uncertain = true; return;
+      uncertain = true;
+      return;
     }
     saving = true;
     queueMicrotask(() => publish(next));
   }
+  // connect the game engine to Arcade (or fall back to local play). Called once by game.js
   async function bind(engine) {
     game = engine;
     if (!window.Arcade) {
       ready = true;
       if (window.parent !== window) {
-        uncertain = true; error = 'Arcade could not load. Reload the game to reconnect.';
+        uncertain = true;
+        error = 'Arcade could not load. Reload the game to reconnect.';
       }
-      game.render(); return;
+      game.render();
+      return;
     }
     let context;
-    try { context = await window.Arcade.ready(); }
-    catch { context = { offline: true }; }
+    try {
+      context = await window.Arcade.ready();
+    } catch {
+      context = { offline: true };
+    }
     ready = true;
     if (!context.match) {
-      // An embedded shell that cannot initialize must not pretend to be a local match.
+      // an embedded shell that cannot initialize must not pretend to be a local match
       if (context.offline && window.parent !== window) {
-        uncertain = true; error = 'Arcade could not connect. Reload the game to reconnect.';
+        uncertain = true;
+        error = 'Arcade could not connect. Reload the game to reconnect.';
       }
-      game.render(); return;
+      game.render();
+      return;
     }
-    match = clone(context.match); version = match.version;
-    window.Arcade.match.onChange(incoming => {
+    match = clone(context.match);
+    version = match.version;
+    window.Arcade.match.onChange((incoming) => {
       if (incoming.version <= version) return;
-      uncertain = false; error = '';
+      uncertain = false;
+      error = '';
       accept(incoming);
       startBoard();
     });
     if (match.state) accept(match, true);
-    else { game.fresh(); startBoard(); }
+    else {
+      game.fresh();
+      startBoard();
+    }
     game.render();
   }
+  // seat 0 deals the opening board once every seat has joined
   function startBoard() {
     if (!match || match.state || match.status !== 'active' || match.you !== 0 || saving) return;
-    acknowledged = ''; game.fresh(); changed(); decorate();
+    acknowledged = '';
+    game.fresh();
+    changed();
+    decorate();
   }
+
+  //=============================================================
+  //                    HELPERS FOR THE GAME
+  //=============================================================
+
+  // the player whose private hand this browser shows (null for spectators)
   function playerForView(state) {
-    return match ? (match.you === null ? null : state.players[match.you]) : state.players[state.turnIndex];
+    return match
+      ? match.you === null
+        ? null
+        : state.players[match.you]
+      : state.players[state.turnIndex];
   }
-  function playerName(seat) { return match?.players[seat]?.name || ''; }
+  function playerName(seat) {
+    return match?.players[seat]?.name || '';
+  }
+  // online auctions: the first eligible seat at or after the current player bids first
   function openAuction(auction, state) {
     auction.passed = [];
-    const eligible = state.players.filter(p => p.id !== auction.seller && !p.bankrupt);
-    auction.actor = eligible.find(p => p.id >= state.turnIndex)?.id ?? eligible[0]?.id ?? null;
+    const eligible = state.players.filter((p) => p.id !== auction.seller && !p.bankrupt);
+    auction.actor = eligible.find((p) => p.id >= state.turnIndex)?.id ?? eligible[0]?.id ?? null;
   }
+  // pass the bid to the next seat still in the auction (null when nobody is left)
   function advanceAuction(auction, state) {
-    const available = state.players.filter(p => p.id !== auction.seller && !p.bankrupt &&
-      !auction.passed.includes(p.id) && p.id !== auction.bidder);
-    const next = [1, 2, 3, 4].map(n => (auction.actor + n) % 4).find(id => available.some(p => p.id === id));
+    const available = state.players.filter(
+      (p) =>
+        p.id !== auction.seller &&
+        !p.bankrupt &&
+        !auction.passed.includes(p.id) &&
+        p.id !== auction.bidder,
+    );
+    const next = [1, 2, 3, 4]
+      .map((n) => (auction.actor + n) % 4)
+      .find((id) => available.some((p) => p.id === id));
     auction.actor = next ?? null;
   }
+
+  //=============================================================
+  //                          EXPORTS
+  //=============================================================
+
   window.CrownsArcade = {
-    bind, changed, decorate, canAct, allowed, snapshot, actor, playerForView, playerName,
-    openAuction, advanceAuction,
-    get online() { return !!match; },
-    get connecting() { return !ready; },
-    get failed() { return uncertain; }
+    bind,
+    changed,
+    decorate,
+    canAct,
+    allowed,
+    snapshot,
+    actor,
+    playerForView,
+    playerName,
+    openAuction,
+    advanceAuction,
+    get online() {
+      return !!match;
+    },
+    get connecting() {
+      return !ready;
+    },
+    get failed() {
+      return uncertain;
+    },
   };
 })();

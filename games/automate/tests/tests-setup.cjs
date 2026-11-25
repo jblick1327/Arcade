@@ -1,7 +1,15 @@
+// tests-setup.cjs - tests for the Automate army draft
+// Author: Reachnid Group
+// Centennial College - Fall 2026
+
+//=============================================================
+//                          IMPORTS
+//=============================================================
+
 const assert = require('node:assert/strict');
 const A = require('../setup.js');
 const R = require('../rules.js');
-const idx = square => (8 - Number(square[1])) * 8 + 'abcdefgh'.indexOf(square[0]);
+const idx = (square) => (8 - Number(square[1])) * 8 + 'abcdefgh'.indexOf(square[0]);
 
 let draft = A.create();
 function put(piece, square) {
@@ -27,7 +35,8 @@ let skipped = false;
 while (!A.complete(draft)) {
   const color = draft.turn;
   const pieces = color === 'w' ? ['Q', 'N', 'P'] : ['P', 'N', 'Q'];
-  const placement = pieces.flatMap(p => Array.from({ length: 64 }, (_, i) => [p, i]))
+  const placement = pieces
+    .flatMap((p) => Array.from({ length: 64 }, (_, i) => [p, i]))
     .find(([p, i]) => !A.placementError(draft, p, i));
   assert.ok(placement, 'a side without placements has already been skipped');
   draft = A.perform(draft, ...placement).state;
@@ -40,4 +49,6 @@ assert.equal(A.hasPlacement(draft, 'b'), false);
 const position = A.battlePosition(draft);
 assert.equal(position.b[R.index('e1')], 'K');
 assert.equal(position.b[R.index('e8')], 'k');
-console.log('Draft rules verified: kings first, permanent placements, skipped turns, and automatic battle.');
+console.log(
+  'Draft rules verified: kings first, permanent placements, skipped turns, and automatic battle.',
+);

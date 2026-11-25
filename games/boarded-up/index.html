@@ -1,0 +1,33 @@
+<!doctype html>
+<!--
+  index.html - Boarded Up: wave-survival zombie shooter drawn by a software raycaster
+  Author: Reachnid Group
+  Centennial College - Fall 2026
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Boarded Up | REACHNID</title>
+    <style>
+      /* the game fills the whole frame */
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #050505;
+      }
+      #game {
+        width: 100vw;
+        height: 100vh;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game"></div>
+
+    <!-- Arcade SDK (sends the score to the site), then the game -->
+    <script src="/sdk/arcade.js"></script>
+    <script type="module" src="main.js"></script>
+  </body>
+</html>

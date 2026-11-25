@@ -1,5 +1,7 @@
 # CROWNS & BONES
 
+_Author: Reachnid Group_
+
 ## Reassessment of the Table Edition
 
 The previous pass made a real but incomplete structural change: it moved the players around the board and removed the permanent sidebar. It retained the dashboard's hierarchy and component repetition. Describing it as a complete change of design philosophy was overstated.
