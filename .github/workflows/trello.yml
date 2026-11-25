@@ -1,0 +1,48 @@
+# Moves the Trello card linked in a PR's description as the PR progresses:
+#   draft -> In progress, open -> In review, merged -> Done.
+# Planning, priorities and new cards stay manual (weekly review).
+#
+# Does nothing until it's configured (Settings -> Secrets and variables -> Actions):
+#   secrets:   TRELLO_API_KEY, TRELLO_AUTH_TOKEN  (from a Trello account that is only on the Reachnid board)
+#   variables: TRELLO_LIST_IN_PROGRESS, TRELLO_LIST_IN_REVIEW, TRELLO_LIST_DONE  (Trello list IDs)
+name: Trello
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, ready_for_review, converted_to_draft, closed]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: trello-${{ github.event.pull_request.number }}
+
+jobs:
+  move-card:
+    # Skip until configured, and for Dependabot, which can't read Actions secrets.
+    if: vars.TRELLO_LIST_IN_REVIEW != '' && github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: rematocorp/trello-integration-action@a5d34918d5bf592a8ef7a1d0ce432cd26c77c8c9 # v10.1.1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          trello-api-key: ${{ secrets.TRELLO_API_KEY }}
+          trello-auth-token: ${{ secrets.TRELLO_AUTH_TOKEN }}
+          trello-board-id: 6aea0bada524f58743ecea06
+          trello-list-id-pr-draft: ${{ vars.TRELLO_LIST_IN_PROGRESS }}
+          trello-list-id-pr-open: ${{ vars.TRELLO_LIST_IN_REVIEW }}
+          trello-list-id-pr-merged: ${{ vars.TRELLO_LIST_DONE }}
+          trello-move-to-merged-list-only-on-merge: true
+          # Cards are labelled by area (Front end, Back end, ...); skip the action's branch-name labels.
+          trello-add-labels-to-cards: false
+          # Add the PR author to the card, but never remove someone a person assigned.
+          trello-add-members-to-cards: true
+          trello-remove-unrelated-members: false
+          github-users-to-trello-users: |-
+            jblick1327:james821
+            DarrynLong:adarrynlong
+            hociotaadrian555-prog:adriannn
+            LexM6400:lex98
+            ahhasham648-sketch:ahmadhasham1
