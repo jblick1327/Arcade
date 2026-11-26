@@ -14,7 +14,7 @@ let cookie = '';
 
 function startServer() {
   return new Promise((resolve, reject) => {
-    server = spawn(process.execPath, ['server/index.js', '--memory-db'], {
+    server = spawn(process.execPath, ['server/server.js', '--memory-db'], {
       env: { ...process.env, PORT: String(PORT), NODE_ENV: 'development', MONGODB_URI: '', SESSION_SECRET: '' },
       stdio: ['ignore', 'pipe', 'inherit'],
     });

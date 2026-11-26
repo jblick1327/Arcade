@@ -1,0 +1,293 @@
+/*
+  pages.css - styles for the Games and Leaderboard pages
+  Author: Reachnid Group
+  Centennial College - Fall 2026
+
+  Uses the same colours, font and light/dark theme as the sign-in page (auth.css).
+*/
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+
+/*=============================================================
+                          PAGE LAYOUT
+=============================================================*/
+
+.page-main {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 60px 0 85px;
+  font-family: 'Poppins', sans-serif;
+}
+.page-intro {
+  margin-bottom: 32px;
+}
+.eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  color: #8055e8;
+  letter-spacing: 1.5px;
+}
+.page-intro h1 {
+  font-size: clamp(31px, 4vw, 46px);
+  letter-spacing: -1.3px;
+  line-height: 1.3;
+  margin: 6px 0 5px;
+}
+.page-intro p,
+.panel-heading p {
+  color: #797189;
+  font-size: 14px;
+  margin: 0;
+}
+
+/*=============================================================
+                         CONTENT PANEL
+=============================================================*/
+
+.content-panel {
+  background: #fff;
+  border: 1px solid #e7e0f1;
+  border-radius: 18px;
+  padding: 28px;
+  box-shadow: 0 8px 30px rgba(29, 16, 60, 0.045);
+}
+.panel-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 24px;
+}
+.panel-heading h2 {
+  font-size: 21px;
+  margin: 0 0 4px;
+}
+.panel-tag {
+  color: #7650ca;
+  background: #f0eafd;
+  border-radius: 30px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 14px;
+  white-space: nowrap;
+}
+
+/* game picker on the leaderboard */
+.panel-select {
+  padding: 8px 14px;
+  border: 1px solid #ded9eb;
+  border-radius: 30px;
+  background: #f0eafd;
+  color: #7650ca;
+  font:
+    600 13px 'Poppins',
+    sans-serif;
+  cursor: pointer;
+}
+
+/*=============================================================
+                          LEADERBOARD
+=============================================================*/
+
+.table-scroll {
+  overflow-x: auto;
+}
+.score-table {
+  width: 100%;
+  max-width: none;
+  border-collapse: collapse;
+  text-align: left;
+  min-width: 440px;
+}
+.score-table th {
+  font-size: 12px;
+  color: #7d7391;
+  font-weight: 600;
+  background: #f6f3fb;
+  padding: 15px 18px;
+  border: none;
+}
+.score-table th:first-child {
+  border-radius: 10px 0 0 10px;
+}
+.score-table th:last-child {
+  border-radius: 0 10px 10px 0;
+}
+.score-table td {
+  padding: 18px;
+  border-bottom: 1px solid #ece7f3;
+  font-size: 15px;
+}
+.score-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.numeric {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+}
+.score-value {
+  font-weight: 700;
+}
+.rank-pill {
+  display: inline-flex;
+  width: 31px;
+  height: 31px;
+  border-radius: 9px;
+  align-items: center;
+  justify-content: center;
+  background: #f2eefb;
+  color: #685785;
+  font-weight: 700;
+}
+.rank-pill.first {
+  background: #e8dcff;
+  color: #7041d7;
+}
+.player-cell {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+.player-avatar {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 11px;
+  background: linear-gradient(145deg, #cbb9fb, #946dec);
+  color: white;
+  font-weight: 700;
+}
+
+/*=============================================================
+                           GAME CARDS
+=============================================================*/
+
+.games-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 17px;
+}
+.game-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #e9e2f2;
+  border-radius: 15px;
+}
+.game-art {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4/3;
+  object-fit: cover;
+  background: #171329;
+}
+
+/* games without a thumbnail get their first letter on a purple tile */
+.game-art-blank {
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle, #33205a, #100b20 75%);
+  color: #d5b8ff;
+  font-size: 56px;
+  font-weight: 800;
+  text-shadow: 0 0 14px #a875ff;
+}
+.game-details {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 16px;
+}
+.game-type {
+  font-size: 11px;
+  color: #835bd9;
+  font-weight: 600;
+}
+.game-details h3 {
+  font-size: 18px;
+  margin: 3px 0 6px;
+}
+.game-details p {
+  flex: 1;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #786e86;
+}
+.game-button {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  padding: 11px 12px;
+  border: 0;
+  border-radius: 9px;
+  background: #8055e8;
+  color: #fff;
+  font:
+    600 13px 'Poppins',
+    sans-serif;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+.game-button:hover {
+  background: #6e40d5;
+  color: #fff;
+}
+
+/*=============================================================
+                           DARK MODE
+=============================================================*/
+
+html[data-theme='dark'] .content-panel,
+html[data-theme='dark'] .game-card {
+  background: #252038;
+  border-color: #39304f;
+}
+html[data-theme='dark'] .page-intro p,
+html[data-theme='dark'] .panel-heading p,
+html[data-theme='dark'] .game-details p {
+  color: #b5a9cc;
+}
+html[data-theme='dark'] .panel-tag,
+html[data-theme='dark'] .panel-select,
+html[data-theme='dark'] .rank-pill,
+html[data-theme='dark'] .score-table th {
+  background: #332944;
+  color: #cbb5f5;
+}
+html[data-theme='dark'] .panel-select {
+  border-color: #49405e;
+}
+html[data-theme='dark'] .score-table td {
+  border-color: #3b3450;
+}
+
+/*=============================================================
+                         SMALL SCREENS
+=============================================================*/
+
+@media (max-width: 600px) {
+  .page-main {
+    padding-top: 36px;
+  }
+  .content-panel {
+    padding: 16px;
+  }
+  .panel-heading {
+    flex-wrap: wrap;
+  }
+  .panel-heading h2 {
+    font-size: 18px;
+  }
+  .player-cell {
+    gap: 7px;
+  }
+  .score-table td {
+    padding: 13px 9px;
+  }
+}

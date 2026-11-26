@@ -1,8 +1,11 @@
-/*
- * app.js — game-state machine: menus, mode selection, countdown, playing,
- * paused, point scored, game over, settings and how-to-play.
- * Receives abstract key codes / pointer positions; owns no DOM.
- */
+// app.js - Retro Paddle game-state machine: menus, countdown, play, pause and game over
+// Author: Reachnid Group
+// Centennial College - Fall 2026
+
+// game-state machine: menus, mode selection, countdown, playing,
+// paused, point scored, game over, settings and how-to-play.
+// Receives abstract key codes / pointer positions; owns no DOM.
+
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory(require('./core.js'));
   else root.PaddleApp = factory(root.PaddleCore);
@@ -10,14 +13,14 @@
   'use strict';
 
   var W = Core.FIELD.W;
-  var COUNT_STEP = 0.6;      // seconds per countdown number
-  var COUNT_STEPS = 3;       // 3, 2, 1
-  var POINT_PAUSE = 0.9;     // seconds of stillness after a point
+  var COUNT_STEP = 0.6; // seconds per countdown number
+  var COUNT_STEPS = 3; // 3, 2, 1
+  var POINT_PAUSE = 0.9; // seconds of stillness after a point
   var IN_GAME = { countdown: true, playing: true, point: true };
 
   var LABELS = {
     difficulty: { easy: 'EASY', medium: 'MEDIUM', hard: 'HARD' },
-    ballSpeed: { slow: 'SLOW', normal: 'NORMAL', fast: 'FAST' }
+    ballSpeed: { slow: 'SLOW', normal: 'NORMAL', fast: 'FAST' },
   };
 
   var HOWTO_LINES = [
@@ -29,7 +32,7 @@
     '',
     '1 PLAYER   W/S  OR  UP/DOWN',
     '2 PLAYERS  P1 W/S   P2 UP/DOWN',
-    'ESC        PAUSE / RESUME'
+    'ESC        PAUSE / RESUME',
   ];
 
   function createApp(deps) {
@@ -45,7 +48,7 @@
       countdown: 0,
       lastCount: 0,
       pointTimer: 0,
-      pausedFrom: null
+      pausedFrom: null,
     };
 
     function sound(name) {
@@ -58,47 +61,77 @@
       app.hover = -1;
     }
 
-    function saveSettings() { Core.saveSettings(deps.storage, app.settings); }
+    function saveSettings() {
+      Core.saveSettings(deps.storage, app.settings);
+    }
 
-    // ---- Menus ----
+    //=============================================================
+
+    //                           MENUS
+
+    //=============================================================
     function getMenu() {
       var s = app.settings;
       switch (app.state) {
         case 'menu':
-          return { title: 'RETRO PADDLE', items: [
-            { id: '1p', label: '1 PLAYER' },
-            { id: '2p', label: '2 PLAYERS' },
-            { id: 'howto', label: 'HOW TO PLAY' },
-            { id: 'settings', label: 'SETTINGS' }
-          ] };
+          return {
+            title: 'RETRO PADDLE',
+            items: [
+              { id: '1p', label: '1 PLAYER' },
+              { id: '2p', label: '2 PLAYERS' },
+              { id: 'howto', label: 'HOW TO PLAY' },
+              { id: 'settings', label: 'SETTINGS' },
+            ],
+          };
         case 'modeSelect':
-          return { title: '1 PLAYER', subtitle: 'SELECT DIFFICULTY', items: [
-            { id: 'easy', label: 'EASY' },
-            { id: 'medium', label: 'MEDIUM' },
-            { id: 'hard', label: 'HARD' },
-            { id: 'back', label: 'BACK' }
-          ] };
+          return {
+            title: '1 PLAYER',
+            subtitle: 'SELECT DIFFICULTY',
+            items: [
+              { id: 'easy', label: 'EASY' },
+              { id: 'medium', label: 'MEDIUM' },
+              { id: 'hard', label: 'HARD' },
+              { id: 'back', label: 'BACK' },
+            ],
+          };
         case 'settings':
-          return { title: 'SETTINGS', subtitle: 'LEFT / RIGHT OR ENTER TO CHANGE', items: [
-            { id: 'difficulty', label: 'AI DIFFICULTY  ' + LABELS.difficulty[s.difficulty] },
-            { id: 'winScore', label: 'WINNING SCORE  ' + s.winScore },
-            { id: 'sound', label: 'SOUND  ' + (s.sound ? 'ON' : 'OFF') },
-            { id: 'ballSpeed', label: 'BALL SPEED  ' + LABELS.ballSpeed[s.ballSpeed] },
-            { id: 'back', label: 'BACK' }
-          ] };
+          return {
+            title: 'SETTINGS',
+            subtitle: 'LEFT / RIGHT OR ENTER TO CHANGE',
+            items: [
+              { id: 'difficulty', label: 'AI DIFFICULTY  ' + LABELS.difficulty[s.difficulty] },
+              { id: 'winScore', label: 'WINNING SCORE  ' + s.winScore },
+              { id: 'sound', label: 'SOUND  ' + (s.sound ? 'ON' : 'OFF') },
+              { id: 'ballSpeed', label: 'BALL SPEED  ' + LABELS.ballSpeed[s.ballSpeed] },
+              { id: 'back', label: 'BACK' },
+            ],
+          };
         case 'howto':
-          return { title: 'HOW TO PLAY', lines: HOWTO_LINES, itemsY: 520, items: [{ id: 'back', label: 'BACK' }] };
+          return {
+            title: 'HOW TO PLAY',
+            lines: HOWTO_LINES,
+            itemsY: 520,
+            items: [{ id: 'back', label: 'BACK' }],
+          };
         case 'paused':
-          return { title: 'PAUSED', overlay: true, items: [
-            { id: 'resume', label: 'RESUME' },
-            { id: 'restart', label: 'RESTART' },
-            { id: 'menu', label: 'MAIN MENU' }
-          ] };
+          return {
+            title: 'PAUSED',
+            overlay: true,
+            items: [
+              { id: 'resume', label: 'RESUME' },
+              { id: 'restart', label: 'RESTART' },
+              { id: 'menu', label: 'MAIN MENU' },
+            ],
+          };
         case 'gameOver':
-          return { title: 'PLAYER ' + (app.match ? app.match.winner : 1) + ' WINS', overlay: true, items: [
-            { id: 'again', label: 'PLAY AGAIN' },
-            { id: 'menu', label: 'MAIN MENU' }
-          ] };
+          return {
+            title: 'PLAYER ' + (app.match ? app.match.winner : 1) + ' WINS',
+            overlay: true,
+            items: [
+              { id: 'again', label: 'PLAY AGAIN' },
+              { id: 'menu', label: 'MAIN MENU' },
+            ],
+          };
         default:
           return null;
       }
@@ -116,7 +149,7 @@
         lineHeight: 34,
         items: menu.items.map(function (item, i) {
           return { x: W / 2 - 220, y: itemsY + i * 58, w: 440, h: 46 };
-        })
+        }),
       };
     }
 
@@ -153,20 +186,27 @@
       switch (app.state) {
         case 'menu':
           sound('blip');
-          if (id === '1p') setState('modeSelect', Core.OPTIONS.difficulty.indexOf(app.settings.difficulty));
+          if (id === '1p')
+            setState('modeSelect', Core.OPTIONS.difficulty.indexOf(app.settings.difficulty));
           else if (id === '2p') startMatch('2p');
           else if (id === 'howto') setState('howto');
           else if (id === 'settings') setState('settings');
           break;
         case 'modeSelect':
           sound('blip');
-          if (id === 'back') { toMenu(0); break; }
+          if (id === 'back') {
+            toMenu(0);
+            break;
+          }
           app.settings.difficulty = id;
           saveSettings();
           startMatch('1p');
           break;
         case 'settings':
-          if (id === 'back') { sound('blip'); toMenu(3); } else cycleSetting(id, 1);
+          if (id === 'back') {
+            sound('blip');
+            toMenu(3);
+          } else cycleSetting(id, 1);
           break;
         case 'howto':
           sound('blip');
@@ -201,14 +241,18 @@
       sound('blip');
     }
 
-    // ---- Match flow ----
+    //=============================================================
+
+    //                        MATCH FLOW
+
+    //=============================================================
     function startMatch(mode) {
       app.match = Core.createMatch({
         mode: mode,
         difficulty: app.settings.difficulty,
         winScore: app.settings.winScore,
         ballSpeed: app.settings.ballSpeed,
-        rng: deps.rng
+        rng: deps.rng,
       });
       startCountdown();
     }
@@ -231,12 +275,17 @@
     }
 
     function input() {
-      var k = app.keys, m = app.match;
-      var up = !!k.KeyW, down = !!k.KeyS;
-      if (m.mode === '1p') { up = up || !!k.ArrowUp; down = down || !!k.ArrowDown; }
+      var k = app.keys,
+        m = app.match;
+      var up = !!k.KeyW,
+        down = !!k.KeyS;
+      if (m.mode === '1p') {
+        up = up || !!k.ArrowUp;
+        down = down || !!k.ArrowDown;
+      }
       return {
         left: (down ? 1 : 0) - (up ? 1 : 0),
-        right: m.mode === '2p' ? (k.ArrowDown ? 1 : 0) - (k.ArrowUp ? 1 : 0) : 0
+        right: m.mode === '2p' ? (k.ArrowDown ? 1 : 0) - (k.ArrowUp ? 1 : 0) : 0,
       };
     }
 
@@ -248,7 +297,10 @@
           Core.advance(m, dt, input()); // paddles may move; ball is parked
           app.countdown -= dt;
           var n = Math.ceil(app.countdown / COUNT_STEP);
-          if (n > 0 && n < app.lastCount) { app.lastCount = n; sound('count'); }
+          if (n > 0 && n < app.lastCount) {
+            app.lastCount = n;
+            sound('count');
+          }
           if (app.countdown <= 0) {
             Core.serve(m, m.nextServeDir);
             setState('playing');
@@ -277,15 +329,18 @@
               setState('gameOver');
               sound('win');
               if (deps.onMatchEnd) deps.onMatchEnd(m);
-            }
-            else startCountdown();
+            } else startCountdown();
           }
           break;
         // paused / menus: simulation is frozen
       }
     }
 
-    // ---- Input entry points ----
+    //=============================================================
+
+    //                    INPUT ENTRY POINTS
+
+    //=============================================================
     function keyDown(code, repeat) {
       app.keys[code] = true;
       var isUp = code === 'ArrowUp' || code === 'KeyW';
@@ -293,26 +348,40 @@
       var isEnter = code === 'Enter' || code === 'NumpadEnter' || code === 'Space';
 
       if (IN_GAME[app.state]) {
-        if (code === 'Escape' && !repeat) { pause(); return true; }
+        if (code === 'Escape' && !repeat) {
+          pause();
+          return true;
+        }
         return isUp || isDown || code === 'Space';
       }
       if (!getMenu()) return false;
 
       if (isUp) moveSelection(-1);
       else if (isDown) moveSelection(1);
-      else if (isEnter) { if (!repeat) activate(app.selected); }
-      else if (app.state === 'settings' && (code === 'ArrowLeft' || code === 'ArrowRight' || code === 'KeyA' || code === 'KeyD')) {
+      else if (isEnter) {
+        if (!repeat) activate(app.selected);
+      } else if (
+        app.state === 'settings' &&
+        (code === 'ArrowLeft' || code === 'ArrowRight' || code === 'KeyA' || code === 'KeyD')
+      ) {
         var item = getMenu().items[app.selected];
-        if (item.id !== 'back') cycleSetting(item.id, code === 'ArrowLeft' || code === 'KeyA' ? -1 : 1);
-      } else if (code === 'Escape') { if (!repeat) back(); }
-      else return false;
+        if (item.id !== 'back')
+          cycleSetting(item.id, code === 'ArrowLeft' || code === 'KeyA' ? -1 : 1);
+      } else if (code === 'Escape') {
+        if (!repeat) back();
+      } else return false;
       return true;
     }
 
-    function keyUp(code) { delete app.keys[code]; }
+    function keyUp(code) {
+      delete app.keys[code];
+    }
 
     function pointerMove(x, y) {
-      if (!getMenu()) { app.hover = -1; return; }
+      if (!getMenu()) {
+        app.hover = -1;
+        return;
+      }
       var i = hitTest(x, y);
       app.hover = i;
       if (i >= 0) app.selected = i;
@@ -347,9 +416,16 @@
     app.blur = blur;
     app.countdownValue = countdownValue;
     app.startMatch = startMatch;
-    app.isInGame = function () { return !!IN_GAME[app.state]; };
+    app.isInGame = function () {
+      return !!IN_GAME[app.state];
+    };
     return app;
   }
 
-  return { createApp: createApp, COUNT_STEP: COUNT_STEP, COUNT_STEPS: COUNT_STEPS, POINT_PAUSE: POINT_PAUSE };
+  return {
+    createApp: createApp,
+    COUNT_STEP: COUNT_STEP,
+    COUNT_STEPS: COUNT_STEPS,
+    POINT_PAUSE: POINT_PAUSE,
+  };
 });

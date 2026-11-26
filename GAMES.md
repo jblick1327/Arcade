@@ -1,5 +1,7 @@
 # Adding your game
 
+_Author: Reachnid Group_
+
 Your game is a folder of plain web files. No build step, no accounts to set up, no API keys.
 
 ## 1. Make the folder
@@ -23,6 +25,8 @@ The folder must contain:
 ```
 
 `scoreOrder` is `"desc"` when a higher score is better and `"asc"` when lower is better (golf, fastest time). `width` and `height` are the size of the frame your game is shown in, in pixels.
+
+Optional: add a `thumbnail.svg` (or `.png`, `.jpg`, `.webp`) beside `index.html` and it becomes your game's picture on the Games page. A 4:3 image works best (for example 320 × 240). Without one the card shows the first letter of your title.
 
 ## 2. Use relative paths
 

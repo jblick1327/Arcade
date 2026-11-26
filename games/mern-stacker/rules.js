@@ -1,44 +1,99 @@
+// rules.js - MERN Stacker rules (no DOM), shared with the tests
+// Author: Reachnid Group
+// Centennial College - Fall 2026
+
 (function () {
   'use strict';
 
+  //=============================================================
+  //                          SETTINGS
+  //=============================================================
+
   const FIELD_W = 480;
   const START_W = 240;
-  const PERFECT_PX = 5;   // within this many pixels counts as a perfect drop
-  const REGROW_PX = 8;    // width handed back per perfect once the combo is going
-  const REGROW_AT = 3;    // consecutive perfects before blocks start to grow back
-  const MIN_W = 2;        // anything thinner than this is just gone
+  const PERFECT_PX = 5; // within this many pixels counts as a perfect drop
+  const REGROW_PX = 8; // width handed back per perfect once the combo is going
+  const REGROW_AT = 3; // consecutive perfects before blocks start to grow back
+  const MIN_W = 2; // anything thinner than this is just gone
 
-  // Blocks cycle bottom-up in real architecture order: the database at the bottom,
+  //=============================================================
+  //                       BLOCKS & TEXT
+  //=============================================================
+
+  // blocks cycle bottom-up in real architecture order: the database at the bottom,
   // the runtime on top of it, the server framework on the runtime, the client on top.
   // (The acronym says M-E-R-N. The acronym was never in order.)
   const STACK = [
     {
-      letter: 'M', name: 'MongoDB', color: '#13aa52', ink: '#ffffff',
+      letter: 'M',
+      name: 'MongoDB',
+      color: '#13aa52',
+      ink: '#ffffff',
       perfect: ['Index hit!', 'Write acknowledged', 'Replica set happy'],
-      fail: ['MongoServerError: connection refused', 'E11000 duplicate key error', 'Schema? We said schemaless.'],
+      fail: [
+        'MongoServerError: connection refused',
+        'E11000 duplicate key error',
+        'Schema? We said schemaless.',
+      ],
     },
     {
-      letter: 'N', name: 'Node', color: '#9ccc3c', ink: '#1b2a08',
+      letter: 'N',
+      name: 'Node',
+      color: '#9ccc3c',
+      ink: '#1b2a08',
       perfect: ['Event loop clear', 'Non-blocking!', '0 vulnerabilities'],
-      fail: ['FATAL ERROR: JavaScript heap out of memory', 'UnhandledPromiseRejection', "Error: Cannot find module 'tower'"],
+      fail: [
+        'FATAL ERROR: JavaScript heap out of memory',
+        'UnhandledPromiseRejection',
+        "Error: Cannot find module 'tower'",
+      ],
     },
     {
-      letter: 'E', name: 'Express', color: '#aab2bd', ink: '#1b1f24',
+      letter: 'E',
+      name: 'Express',
+      color: '#aab2bd',
+      ink: '#1b1f24',
       perfect: ['200 OK', 'Route matched', 'next() called'],
-      fail: ['Cannot GET /tower', '500 Internal Server Error', "Can't set headers after they are sent"],
+      fail: [
+        'Cannot GET /tower',
+        '500 Internal Server Error',
+        "Can't set headers after they are sent",
+      ],
     },
     {
-      letter: 'R', name: 'React', color: '#61dafb', ink: '#0b2530',
+      letter: 'R',
+      name: 'React',
+      color: '#61dafb',
+      ink: '#0b2530',
       perfect: ['No re-renders!', 'Hydrated cleanly', 'Hooks in order'],
-      fail: ['Too many re-renders', 'Each child in a list should have a unique "key" prop', 'Hydration mismatch'],
+      fail: [
+        'Too many re-renders',
+        'Each child in a list should have a unique "key" prop',
+        'Hydration mismatch',
+      ],
     },
   ];
 
-  // Every overhang you slice off is scope you just cut. It gets worse as the run goes on.
+  // every overhang you slice off is scope you just cut. It gets worse as the run goes on
   const CUTS = [
-    'dark mode', 'i18n', 'animations', 'the onboarding tour', 'docs', 'the README',
-    'mobile layout', 'accessibility', 'unit tests', 'integration tests', 'error handling',
-    'input validation', 'logging', 'rate limiting', 'auth', 'backups', 'password hashing', 'the database',
+    'dark mode',
+    'i18n',
+    'animations',
+    'the onboarding tour',
+    'docs',
+    'the README',
+    'mobile layout',
+    'accessibility',
+    'unit tests',
+    'integration tests',
+    'error handling',
+    'input validation',
+    'logging',
+    'rate limiting',
+    'auth',
+    'backups',
+    'password hashing',
+    'the database',
   ];
   const CUTS_AFTER = 'whatever was left';
 
@@ -54,26 +109,37 @@
     [100, 'CTO (still has root access)'],
   ];
 
+  //=============================================================
+  //                           RULES
+  //=============================================================
+
+  // style for the block at tower level `index` (cycles through STACK)
   function blockFor(index) {
     return STACK[((index % STACK.length) + STACK.length) % STACK.length];
   }
 
-  // Pixels per second for the block that is about to slide, given how many blocks are stacked.
+  // pixels per second for the block that is about to slide, given how many blocks are stacked
   function speedFor(score) {
     return Math.min(520, 170 + score * 7);
   }
 
-  // Land `mover` on `top`. Both are { x, w } measured from the left edge of the field.
-  // Returns { ok:false, cut } when it misses completely, otherwise
+  // land `mover` on `top`. Both are { x, w } measured from the left edge of the field.
+  // returns { ok:false, cut } when it misses completely, otherwise
   // { ok:true, perfect, placed, cut } where cut is the overhanging piece (or null).
   function drop(top, mover) {
     if (Math.abs(mover.x - top.x) <= PERFECT_PX && Math.abs(mover.w - top.w) <= PERFECT_PX) {
-      return { ok: true, perfect: true, placed: { x: top.x, w: Math.min(top.w, mover.w) }, cut: null };
+      return {
+        ok: true,
+        perfect: true,
+        placed: { x: top.x, w: Math.min(top.w, mover.w) },
+        cut: null,
+      };
     }
     const left = Math.max(top.x, mover.x);
     const right = Math.min(top.x + top.w, mover.x + mover.w);
     const overlap = right - left;
-    if (overlap < MIN_W) return { ok: false, perfect: false, placed: null, cut: { x: mover.x, w: mover.w } };
+    if (overlap < MIN_W)
+      return { ok: false, perfect: false, placed: null, cut: { x: mover.x, w: mover.w } };
 
     const placed = { x: left, w: overlap };
     let cut = null;
@@ -82,7 +148,7 @@
     return { ok: true, perfect: false, placed, cut };
   }
 
-  // After enough perfects in a row the tower earns some width back (never past the starting width).
+  // after enough perfects in a row the tower earns some width back (never past the starting width)
   function regrow(placed, combo) {
     if (combo < REGROW_AT || placed.w >= START_W) return placed;
     const w = Math.min(START_W, placed.w + REGROW_PX);
@@ -90,35 +156,57 @@
     return { x, w };
   }
 
-  // Name of the n-th feature cut in a run (0-based).
+  // name of the n-th feature cut in a run (0-based)
   function cutLabel(n) {
     return n < CUTS.length ? CUTS[n] : CUTS_AFTER;
   }
 
-  // Placing the block at `level` finishes a whole Mongo-Node-Express-React set.
-  // Returns the release number it ships (1, 2, ...) or 0.
+  // placing the block at `level` finishes a whole Mongo-Node-Express-React set.
+  // returns the release number it ships (1, 2, ...) or 0.
   function releaseAt(level) {
     return level % STACK.length === STACK.length - 1 ? (level + 1) / STACK.length : 0;
   }
 
+  // banner text for the n-th release
   function releaseLabel(n) {
     return n === 1 ? 'v1.0.0: MVP shipped!' : 'v' + n + '.0.0 shipped!';
   }
 
+  // job title earned by a final score
   function rankFor(score) {
     let title = RANKS[0][1];
     for (const [min, name] of RANKS) if (score >= min) title = name;
     return title;
   }
 
+  // A random element of `list`
   function pick(list, random) {
     return list[Math.floor((random || Math.random)() * list.length) % list.length];
   }
 
+  //=============================================================
+  //                          EXPORTS
+  //=============================================================
+
   const rules = {
-    FIELD_W, START_W, PERFECT_PX, REGROW_PX, REGROW_AT, MIN_W,
-    STACK, CUTS, RANKS,
-    blockFor, speedFor, drop, regrow, cutLabel, releaseAt, releaseLabel, rankFor, pick,
+    FIELD_W,
+    START_W,
+    PERFECT_PX,
+    REGROW_PX,
+    REGROW_AT,
+    MIN_W,
+    STACK,
+    CUTS,
+    RANKS,
+    blockFor,
+    speedFor,
+    drop,
+    regrow,
+    cutLabel,
+    releaseAt,
+    releaseLabel,
+    rankFor,
+    pick,
   };
   if (typeof module === 'object' && module.exports) module.exports = rules;
   else window.MernStacker = rules;

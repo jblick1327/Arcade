@@ -1,5 +1,7 @@
 # Arcade — architecture
 
+_Author: Reachnid Group_
+
 How the site, the API and the SDK fit together. **You don't need this to add a game:** start with [GAMES.md](GAMES.md). Read this when you change the server, the client or the SDK, or when you build an online multiplayer game.
 
 A small MERN site that hosts web games made by a group of classmates. Players log in, play, and their scores are recorded. One game (Automate) is two-player online.
@@ -14,31 +16,42 @@ arcade/
   .env.example          MONGODB_URI, SESSION_SECRET, PORT
   vite.config.js        root: 'client'; dev proxy for /api, /games, /sdk -> http://localhost:3000
   ARCHITECTURE.md  GAMES.md  README.md
+  .prettierrc.json      code style (npm run format)
   .github/workflows/ci.yml   runs npm test, npm run build, the smoke test and npm audit on every PR
   .github/pull_request_template.md
   sdk/arcade.js         what games include
   games/
     _template/          the starter game
-    automate/  scarab-21/   (a game folder may add server.js: see "Game server hooks")
+    2048/  automate/  boarded-up/  crowns-and-bones/  doors/  mern-stacker/  retro-paddle/  scarab-21/  snake/
+                        (a game folder may add server.js: see "Game server hooks",
+                         and thumbnail.svg/png for its card on the Games page)
   server/
-    index.js            app setup, static serving, starts listening
-    models.js           User, Score, Match
-    games.js            reads games/*/game.json and loads optional games/*/server.js hooks
+    server.js           app setup, static serving, starts listening
     memory-db.js        throwaway in-memory MongoDB (dev:local, smoke test, PR previews)
     prefetch-mongod.js  build step: downloads mongod for PR previews only
     smoke.js            boots the real server and checks the site loads (npm run test:smoke)
-    routes/auth.js  routes/games.js  routes/matches.js
+    models/             user_model.js  score_model.js  match_model.js
+    controllers/        auth_controller.js  game_controller.js  match_controller.js (request handlers)
+    routes/             auth_routes.js  game_routes.js  match_routes.js (URL -> controller)
+    middleware/         auth_middleware.js (requireAuth)
+    utils/              game_catalog.js (reads games/*/game.json, loads optional games/*/server.js hooks)
+    tests/              *.test.js
   client/
     index.html
-    src/main.jsx  App.jsx  api.js  bridge.js (the site half of the SDK)
-    src/pages/Home.jsx  Play.jsx  Login.jsx  Register.jsx
+    public/img/         REACHNID logos (light and dark)
+    src/main.jsx  App.jsx
+    src/components/     Navbar.jsx  ArcadeMachine.jsx
+    src/hooks/          useTheme.js (light/dark theme)
+    src/pages/          Home.jsx  Games.jsx  Play.jsx  Leaderboard.jsx  Auth.jsx  About.jsx  Contact.jsx
+    src/styles/         site.css  reachnid.css  pages.css  auth.css
+    src/utils/          api.js  bridge.js (the site half of the SDK)
 ```
 
-Dependencies: `express`, `mongoose`, `express-session`, `connect-mongo`, `bcryptjs`, `dotenv`; `react`, `react-dom`, `react-router-dom`; dev: `vite`, `@vitejs/plugin-react`, `concurrently`, `mongodb-memory-server-core` (so nobody needs a database to run the site). Keep it that way unless there is a good reason.
+Dependencies: `express`, `mongoose`, `express-session`, `connect-mongo`, `bcryptjs`, `dotenv`; `react`, `react-dom`, `react-router-dom`; dev: `vite`, `@vitejs/plugin-react`, `concurrently`, `mongodb-memory-server-core` (so nobody needs a database to run the site), `prettier`. Keep it that way unless there is a good reason.
 
 Scripts:
 
-- `npm run dev` — Express on 3000 (`node --watch server/index.js`) and Vite on 5173 together, using the database in `.env`. Developers open `http://localhost:5173`.
+- `npm run dev` — Express on 3000 (`node --watch server/server.js`) and Vite on 5173 together, using the database in `.env`. Developers open `http://localhost:5173`.
 - `npm run dev:local` — the same, with `--memory-db`: a throwaway in-memory database, no `.env` needed. Data resets whenever the server restarts.
 - `npm test` — `test:platform` then `test:games`, with Node's built-in runner (no database needed).
 - `npm run test:platform` — `server/**/*.test.js` only; `npm run test:games` — every `games/*/tests/*.cjs`.
@@ -60,13 +73,13 @@ Free Render services sleep after 15 minutes without incoming traffic and can tak
 
 ### Throwaway database
 
-`server/index.js` uses an in-memory MongoDB (`server/memory-db.js`) instead of `MONGODB_URI` when it is started with `--memory-db` or when Render sets `IS_PULL_REQUEST=true`. `SESSION_SECRET` is optional in that mode. The mongod binary downloads on first use into `node_modules/.cache/mongodb-memory-server`; CI caches it, and Render's build runs `server/prefetch-mongod.js`, which downloads it only for previews. Production never loads the package.
+`server/server.js` uses an in-memory MongoDB (`server/memory-db.js`) instead of `MONGODB_URI` when it is started with `--memory-db` or when Render sets `IS_PULL_REQUEST=true`. `SESSION_SECRET` is optional in that mode. The mongod binary downloads on first use into `node_modules/.cache/mongodb-memory-server`; CI caches it, and Render's build runs `server/prefetch-mongod.js`, which downloads it only for previews. Production never loads the package.
 
 ### PR previews
 
 Render can deploy each pull request to its own temporary URL. Turn it on in the service's **Previews** tab: **Manual** creates a preview only for PRs with `[render preview]` in the title; **Automatic** creates one for every PR. Previews copy production's environment, including `MONGODB_URI`, so the server ignores it and starts empty on the in-memory database. A preview's data is lost whenever it sleeps or redeploys. Previews of a Free service are free, but they share the workspace's monthly Free instance hours with production.
 
-## Static serving (server/index.js)
+## Static serving (server/server.js)
 
 Mount in this order:
 
@@ -78,7 +91,7 @@ Mount in this order:
 
 Sessions: `express-session` with `connect-mongo`, secret from `SESSION_SECRET`, cookie `httpOnly`, `sameSite: 'lax'`, 30 days, `saveUninitialized: false`. The session stores only `userId`.
 
-## Game registry (server/games.js)
+## Game registry (server/utils/game_catalog.js)
 
 On each request to the games endpoints, read the `games/` directory (no caching, so a new folder shows up on refresh). A folder is a game when:
 
@@ -98,7 +111,7 @@ On each request to the games endpoints, read the `games/` directory (no caching,
 
 A folder with a broken `game.json` is skipped and logged with `console.warn`; it must not crash the server. The game object returned by the API is these fields plus `slug`.
 
-## Data (server/models.js)
+## Data (server/models/)
 
 ```
 User   { name, nameLower (unique index), passwordHash, createdAt }
@@ -177,7 +190,7 @@ Make the write atomic: `findOneAndUpdate` filtered on `_id`, `version`, `status:
 
 #### Game server hooks
 
-A game folder may contain `server.js` (CommonJS via `module.exports`, like the rest of `games/`). `server/games.js` loads it on first use and caches it; a hook that exists but fails to load makes the request fail rather than skip validation. Every export is optional:
+A game folder may contain `server.js` (CommonJS via `module.exports`, like the rest of `games/`). `server/utils/game_catalog.js` (`getGameServer`) loads it on first use and caches it; a hook that exists but fails to load makes the request fail rather than skip validation. Every export is optional:
 
 | Export | Called | Returns |
 |---|---|---|
@@ -193,13 +206,21 @@ Tests follow the same split. `npm run test:platform` (`server/**/*.test.js`) use
 
 ## Client
 
-Four routes with `react-router-dom`. `App.jsx` fetches `/api/me` once, keeps `user` in state, and renders a `<nav>` on every page: site name linking to `/`, then either "`<name>` · Log out" or "Log in · Register".
+Routes with `react-router-dom`. `App.jsx` fetches `/api/me` once, keeps `user` in state, and renders `Navbar` on every page: the REACHNID logo, links to Home, Games, Leaderboard, About Us and Contact, a light/dark theme switch (`useTheme` writes `<html data-theme>` and remembers it in `localStorage`), then either "`<name>` · Log out" or "Sign in".
 
-`api.js` is one function, `api(method, path, body)`, returning `{ status, data }` (same shape as `http` in `bridge.js`).
+`utils/api.js` is one function, `api(method, path, body)`, returning `{ status, data }` (same shape as `http` in `utils/bridge.js`).
 
-**`/` Home** — `<h1>`, then a `<ul>` of games: title as a link to `/play/<slug>`, description beside it.
+Styles: `site.css` holds the base and Play page styles (its plain-element rules are wrapped in `:where()` so page classes always win); `reachnid.css` the navbar, About and Contact pages and the theme colours; `pages.css` the Games and Leaderboard pages; `auth.css` the sign-in page and the home page. Dark-mode rules key off `html[data-theme='dark']`.
 
-**`/login`, `/register`** — a form with name and password. On success set `user` and go to `/`. On failure show the `error` text in a `<p role="alert">`.
+**`/` Home** — welcome banner with the arcade machine and a "Browse games" button, then the three feature cards (Games, Connect, Leaderboard) linking to their pages.
+
+**`/play` Games** — a card per game from `GET /api/games`: thumbnail (or the title's first letter), single player / online label, description and a Play button linking to `/play/<slug>`. (The list lives at `/play`, not `/games`, because `/games/*` is where Express serves the game folders.)
+
+**`/leaderboard` Leaderboard** — a game picker and that game's top 10 from `GET /api/games/:slug/leaderboard` (best score, or wins for match games).
+
+**`/login`, `/register`** — both show the sign-in page: a sign-in card, the arcade machine and a register card (username, password, confirm). On success set `user` and go to `/`. On failure show the `error` text in a `<p role="alert">`.
+
+**`/about`, `/contact`** — the team cards, and a contact form that checks its fields (there is no contact endpoint yet).
 
 **`/play/:slug` Play** — fetch the game (show "Game not found" on 404), then render:
 
@@ -214,7 +235,7 @@ Lobby for `match` games. The current match comes from the `?match=<id>` query pa
 - No `match` parameter: the iframe runs the game in local mode. Above it show a "New online match" button (guests see "Log in to play online" instead) and a list of matches from `GET /api/games/:slug/matches`, each with the host's name and a "Join" button (or "Resume" for the requester's own). Refresh the list every 5 seconds. New match → `POST`, then navigate to `?match=<id>`. Join → `POST …/join`, then navigate.
 - With a `match` parameter: show one status line driven by the bridge's `onMatch` callback — for two-player games, "Waiting for an opponent" or "ann vs bob — in progress"; for four-player games, waiting displays the occupied seat count (e.g. "2/4") and active matches list all players. A finished match displays the winner or "draw". If the user is logged in, not in the match, and it is `waiting`, show a "Join this match" button. Always show a "Leave" link back to `/play/<slug>`. If the match is `blocked`, show the message, and show a button for each entry in `actions` (in the lobby list and on the match page).
 
-**Dev shortcuts** — in `vite` dev mode only, `?dev=1` on the home or play page adds an iframe reload button and, on a waiting match, a "Copy invite link" button. They are not in production builds.
+**Dev shortcuts** — in `vite` dev mode only, `?dev=1` on the home, games or play page adds an iframe reload button and, on a waiting match, a "Copy invite link" button. They are not in production builds.
 
 ## Known limits
 

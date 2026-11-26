@@ -1,4 +1,13 @@
+// helpers.js - shared helpers for the Retro Paddle tests
+// Author: Reachnid Group
+// Centennial College - Fall 2026
+
 'use strict';
+
+//=============================================================
+//                          IMPORTS
+//=============================================================
+
 const Core = require('../js/core.js');
 
 /*
@@ -9,8 +18,16 @@ const Core = require('../js/core.js');
 function measureAI(level, seed, trials, opts) {
   opts = opts || {};
   const rng = Core.mulberry32(seed);
-  const m = Core.createMatch({ mode: '1p', difficulty: level, winScore: 11, ballSpeed: opts.ballSpeed || 'normal', rng });
-  let returns = 0, misses = 0, maxStep = 0;
+  const m = Core.createMatch({
+    mode: '1p',
+    difficulty: level,
+    winScore: 11,
+    ballSpeed: opts.ballSpeed || 'normal',
+    rng,
+  });
+  let returns = 0,
+    misses = 0,
+    maxStep = 0;
   for (let t = 0; t < trials; t++) {
     Core.serve(m, 1);
     let guard = 0;
@@ -40,8 +57,12 @@ function fakeStorage(initial) {
   return {
     data,
     getItem: (k) => (k in data ? data[k] : null),
-    setItem: (k, v) => { data[k] = String(v); },
-    removeItem: (k) => { delete data[k]; }
+    setItem: (k, v) => {
+      data[k] = String(v);
+    },
+    removeItem: (k) => {
+      delete data[k];
+    },
   };
 }
 

@@ -1,13 +1,32 @@
+// server.test.cjs - tests for Automate's server hook (games/automate/server.js)
+// Author: Reachnid Group
+// Centennial College - Fall 2026
+
+//=============================================================
+//                          IMPORTS
+//=============================================================
+
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
+
+// import the game rules and the hook being tested
 const Army = require('../setup.js');
 const Chess = require('../rules.js');
 const hook = require('../server.js');
 const { currentAutomateState, restartIncompatibleDraft, validateAutomateUpdate } = hook;
 
-const seat = color => color === 'w' ? 0 : 1;
+//=============================================================
+//                        TEST HELPERS
+//=============================================================
+
+const seat = (color) => (color === 'w' ? 0 : 1);
 const patch = (draft, runner = null, moves = []) => ({
-  state: { phase: runner === null ? 'draft' : 'battle', draft: Army.snapshot(draft), runner, moves },
+  state: {
+    phase: runner === null ? 'draft' : 'battle',
+    draft: Army.snapshot(draft),
+    runner,
+    moves,
+  },
   turn: runner ?? seat(draft.turn),
 });
 
@@ -23,15 +42,29 @@ function draftKings() {
   return apply(apply(null, 0, patch(white)).state, 1, patch(black)).state;
 }
 
+//=============================================================
+//                           TESTS
+//=============================================================
+
 test('draft writes allow one placement without changing either army’s existing pieces', () => {
   const ready = draftKings();
   const one = Army.perform(ready.draft, 'N', 57).state;
   for (const modify of [
-    proposal => { proposal.state.draft.armies.b[4] = null; },
-    proposal => { proposal.state.draft.armies.w[58] = 'B'; },
-    proposal => { proposal.state.draft.armies.w[60] = null; },
-    proposal => { proposal.turn = 0; },
-    proposal => { proposal.result = { winner: 0 }; },
+    (proposal) => {
+      proposal.state.draft.armies.b[4] = null;
+    },
+    (proposal) => {
+      proposal.state.draft.armies.w[58] = 'B';
+    },
+    (proposal) => {
+      proposal.state.draft.armies.w[60] = null;
+    },
+    (proposal) => {
+      proposal.turn = 0;
+    },
+    (proposal) => {
+      proposal.result = { winner: 0 };
+    },
   ]) {
     const proposal = patch(one);
     modify(proposal);
@@ -71,11 +104,13 @@ test('a full draft starts the battle and the server accepts only one legal move 
   let runner;
   while (state.phase === 'draft') {
     runner = seat(state.draft.turn);
-    const placement = ['P', 'Q', 'N', 'B', 'R'].flatMap(p => Array.from({ length: 64 }, (_, i) => [p, i]))
+    const placement = ['P', 'Q', 'N', 'B', 'R']
+      .flatMap((p) => Array.from({ length: 64 }, (_, i) => [p, i]))
       .find(([p, i]) => !Army.placementError(state.draft, p, i));
     assert.ok(placement);
     const draft = Army.perform(state.draft, ...placement).state;
-    if (Army.complete(draft)) assert.equal(validateAutomateUpdate(state, runner, patch(draft)), null);
+    if (Army.complete(draft))
+      assert.equal(validateAutomateUpdate(state, runner, patch(draft)), null);
     state = apply(state, runner, patch(draft, Army.complete(draft) ? runner : null)).state;
   }
   const position = Army.battlePosition(state.draft);
@@ -85,23 +120,40 @@ test('a full draft starts the battle and the server accepts only one legal move 
   const next = apply(state, runner, proposed);
   assert.equal(next.status, undefined);
   assert.equal(validateAutomateUpdate(state, 1 - runner, proposed), null);
-  assert.equal(validateAutomateUpdate(state, runner, { ...proposed, result: { winner: runner } }), null);
+  assert.equal(
+    validateAutomateUpdate(state, runner, { ...proposed, result: { winner: runner } }),
+    null,
+  );
   const altered = patch(state.draft, runner, [uci]);
   altered.state.draft.armies.w[60] = null;
   assert.equal(validateAutomateUpdate(state, runner, altered), null);
 
   const reply = Chess.key(Chess.legal(Chess.apply(position, move))[0]);
-  assert.equal(validateAutomateUpdate(state, runner, patch(state.draft, runner, [uci, reply])), null);
+  assert.equal(
+    validateAutomateUpdate(state, runner, patch(state.draft, runner, [uci, reply])),
+    null,
+  );
   assert.equal(validateAutomateUpdate(next.state, runner, patch(state.draft, runner, [])), null);
-  assert.equal(validateAutomateUpdate(next.state, runner, patch(state.draft, runner, [uci, uci])), null);
-  assert.deepEqual(apply(next.state, runner, patch(state.draft, runner, [uci, reply])).state.moves, [uci, reply]);
+  assert.equal(
+    validateAutomateUpdate(next.state, runner, patch(state.draft, runner, [uci, uci])),
+    null,
+  );
+  assert.deepEqual(
+    apply(next.state, runner, patch(state.draft, runner, [uci, reply])).state.moves,
+    [uci, reply],
+  );
 });
 
 test('the server derives the winner from checkmate in a resumed battle', () => {
   const draft = Army.create();
-  for (const [color, back, pawns] of [['w', 56, 48], ['b', 0, 8]]) {
+  for (const [color, back, pawns] of [
+    ['w', 56, 48],
+    ['b', 0, 8],
+  ]) {
     const army = draft.armies[color];
-    [...'RNBQKBNR'].slice(1).forEach((piece, i) => { army[back + i + 1] = piece; });
+    [...'RNBQKBNR'].slice(1).forEach((piece, i) => {
+      army[back + i + 1] = piece;
+    });
     army.fill('P', pawns, pawns + 8);
   }
   draft.done = { w: true, b: true };
@@ -116,7 +168,7 @@ test('the server derives the winner from checkmate in a resumed battle', () => {
   assert.deepEqual(apply(state, runner, proposed), { ...proposed, status: 'done', winner: 1 });
 });
 
-// The platform-facing hook (view / actions), as the match routes call it.
+// the platform-facing hook (view / actions), as the match controller calls it
 function legacyDraft() {
   const legacy = patch(draftKings().draft).state;
   legacy.draft.armies.w[60] = null;
@@ -133,7 +185,10 @@ test('view blocks incompatible drafts and derives the draft turn for healthy one
   const healthy = hook.view({ state: draftKings(), turn: 1, status: 'active' });
   assert.equal(healthy.blocked, undefined);
   assert.equal(healthy.turn, healthy.state.draft.turn === 'w' ? 0 : 1);
-  assert.deepEqual(hook.view({ state: null, turn: 0, status: 'waiting' }), { state: null, turn: 0 });
+  assert.deepEqual(hook.view({ state: null, turn: 0, status: 'waiting' }), {
+    state: null,
+    turn: 0,
+  });
 });
 
 test('restart-draft is offered only for active incompatible drafts', () => {
@@ -146,6 +201,11 @@ test('restart-draft is offered only for active incompatible drafts', () => {
     { state: ready, status: 'active' }, // healthy draft
     { state: patch(one, 0).state, status: 'active' }, // battle
     { state: null, status: 'active' },
-  ]) assert.equal(restart.available(ctx), false);
-  assert.deepEqual(restart.run({ state: legacyDraft(), status: 'active', actor: 1 }), { state: null, turn: 0, winner: null });
+  ])
+    assert.equal(restart.available(ctx), false);
+  assert.deepEqual(restart.run({ state: legacyDraft(), status: 'active', actor: 1 }), {
+    state: null,
+    turn: 0,
+    winner: null,
+  });
 });
