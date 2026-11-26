@@ -1,5 +1,7 @@
 # Adding your game
 
+_Author: Reachnid Group_
+
 Your game is a folder of plain web files. No build step, no accounts to set up, no API keys.
 
 ## 1. Make the folder
@@ -23,6 +25,8 @@ The folder must contain:
 ```
 
 `scoreOrder` is `"desc"` when a higher score is better and `"asc"` when lower is better (golf, fastest time). `width` and `height` are the size of the frame your game is shown in, in pixels.
+
+Optional: add a `thumbnail.svg` (or `.png`, `.jpg`, `.webp`) beside `index.html` and it becomes your game's picture on the Games page. A 4:3 image works best (for example 320 × 240). Without one the card shows the first letter of your title.
 
 ## 2. Use relative paths
 
@@ -91,6 +95,6 @@ Set `"mode": "match"` in `game.json`. Matches default to 2 players; add `"maxPla
 - Redraw your board when `Arcade.match.onChange(fn)` fires. It runs whenever another player moves; the site checks for changes every second or two.
 - If players act at once, a conflicting write is rejected with `{ ok: false, reason: 'conflict' }` and the current match attached. Use that match and carry on.
 
-The server doesn't know your game's rules: it checks that it's the sender's turn and the version matches, and nothing else. A determined player could cheat by sending the server a move your game would never allow. That's fine for a casual game. Automate is the exception, with its own checks in `server/automate.js`, because it's a competitive game. If you want that, talk to the maintainer first.
+The server doesn't know your game's rules: it checks that it's the sender's turn and the version matches, and nothing else. A determined player could cheat by sending the server a move your game would never allow. That's fine for a casual game. If you want the server to enforce your rules, add a `server.js` to your folder with a `validateUpdate` function (and optionally `view` and named `actions`), written as CommonJS (`module.exports = { … }`). The contract is under "Game server hooks" in `ARCHITECTURE.md`, and `games/automate/server.js` is the worked example. Unlike the rest of your folder, `server.js` runs inside the site's server with full access to its files, network and database, and nothing stops it from using them. Keep it to pure rule checks and talk to the maintainer before you start; a PR that adds or changes a `server.js` gets a closer review. Test it in `games/<your-game>/tests/` (see `games/automate/tests/server.test.cjs`); `npm run test:games` runs every game's tests.
 
-To try a match you need the full site running (see the README) and a separate logged-in browser session for each player (two by default, or four with `"maxPlayers": 4`).
+To try a match you need the full site running (`npm run dev:local` needs no setup; see the README) and a separate logged-in browser session for each player (two by default, or four with `"maxPlayers": 4`).

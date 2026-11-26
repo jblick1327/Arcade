@@ -1,5 +1,7 @@
 # Automate audio
 
+_Author: Reachnid Group_
+
 The original piece and capture samples cover ordinary moves and checks.
 Draft placement reuses the piece sample at lower gain. Castling uses two taps.
 Promotion, checkmate and draws add short rendered chimes over the move.

@@ -1,5 +1,7 @@
 # CROWNS & BONES
 
+_Author: Reachnid Group_
+
 Work in progress — player feedback welcome.
 
 A four-player game combining property, chess and dominoes. The last court still in play wins. Open **Rules** at the table for the complete rules.
@@ -19,6 +21,8 @@ Local browser saves remain separate from online matches. The Game menu offers ma
 As with Arcade's other generic match games, match data is public to the participants' browsers and rules are enforced by the game client. Hands are hidden from other seats in the interface, not by a private server-side deal.
 
 ## Development
+
+The game is split into `index.html` (markup), `style.css`, `game.js` (rules, rendering and input) and `arcade.js` (the online-match adapter).
 
 Serve the repository root and open `/games/crowns-and-bones/`, or run `npm run dev` and use the Arcade game list. No new dependencies or server/client/SDK changes are required.
 

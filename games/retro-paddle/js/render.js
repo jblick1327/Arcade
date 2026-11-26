@@ -1,31 +1,46 @@
-/*
- * render.js — draws the app state onto a canvas in logical 800x600 units.
- * Pure black and white, block-pixel score digits, no effects.
- */
+// render.js - Retro Paddle drawing: paints the game state onto the canvas
+// Author: Reachnid Group
+// Centennial College - Fall 2026
+
+// draws the app state onto a canvas in logical 800x600 units.
+// Pure black and white, block-pixel score digits, no effects.
+
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory(require('./core.js'));
   else root.PaddleRender = factory(root.PaddleCore);
 })(typeof self !== 'undefined' ? self : this, function (Core) {
   'use strict';
 
-  var W = Core.FIELD.W, H = Core.FIELD.H;
-  var BLACK = '#000000', WHITE = '#FFFFFF';
+  var W = Core.FIELD.W,
+    H = Core.FIELD.H;
+  var BLACK = '#000000',
+    WHITE = '#FFFFFF';
   var FONT = '"Courier New", Courier, monospace';
 
   // 3x5 block digits, row-major.
   var DIGITS = [
-    '111101101101111', '001001001001001', '111001111100111', '111001111001111', '101101111001001',
-    '111100111001111', '111100111101111', '111001001001001', '111101111101111', '111101111001111'
+    '111101101101111',
+    '001001001001001',
+    '111001111100111',
+    '111001111001111',
+    '101101111001001',
+    '111100111001111',
+    '111100111101111',
+    '111001001001001',
+    '111101111101111',
+    '111101111001111',
   ];
 
   function drawNumber(ctx, value, cx, y, cell) {
     var str = String(value);
-    var dw = 3 * cell, gap = 2 * cell;
+    var dw = 3 * cell,
+      gap = 2 * cell;
     var x = Math.round(cx - (str.length * dw + (str.length - 1) * gap) / 2);
     for (var n = 0; n < str.length; n++) {
       var glyph = DIGITS[+str[n]];
       for (var i = 0; i < 15; i++) {
-        if (glyph[i] === '1') ctx.fillRect(x + (i % 3) * cell, y + Math.floor(i / 3) * cell, cell, cell);
+        if (glyph[i] === '1')
+          ctx.fillRect(x + (i % 3) * cell, y + Math.floor(i / 3) * cell, cell, cell);
       }
       x += dw + gap;
     }
@@ -80,7 +95,9 @@
     if (menu.lines) {
       ctx.font = 'bold 22px ' + FONT;
       var widest = 0;
-      menu.lines.forEach(function (l) { widest = Math.max(widest, ctx.measureText(l).width); });
+      menu.lines.forEach(function (l) {
+        widest = Math.max(widest, ctx.measureText(l).width);
+      });
       var lx = Math.round(W / 2 - widest / 2);
       menu.lines.forEach(function (l, i) {
         text(ctx, l, lx, layout.linesY + i * layout.lineHeight, 22, 'left');

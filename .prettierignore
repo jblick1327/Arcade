@@ -1,0 +1,7 @@
+# Generated, vendored, or binary-adjacent files that must not be reformatted.
+node_modules/
+client/dist/
+package-lock.json
+games/automate/engine/
+games/doors/audio-data.js
+*.md

@@ -1,49 +1,83 @@
-/*
- * core.js — pure gameplay logic: field constants, paddles, ball physics,
- * collisions, scoring, computer opponent and settings persistence.
- * No DOM access, so it runs unchanged in the browser and in Node tests.
- */
+// core.js - Retro Paddle gameplay rules (no DOM), shared with the tests
+// Author: Reachnid Group
+// Centennial College - Fall 2026
+
+// pure gameplay logic: field constants, paddles, ball physics,
+// collisions, scoring, computer opponent and settings persistence.
+// No DOM access, so it runs unchanged in the browser and in Node tests.
+
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
   else root.PaddleCore = factory();
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  // ---- Fixed logical playfield (physics never depends on screen size) ----
+  //=============================================================
+
+  //                  FIXED LOGICAL PLAYFIELD
+
+  //=============================================================
+
+  // physics never depends on screen size
   var FIELD = { W: 800, H: 600 };
   var PADDLE = { W: 12, H: 80, MARGIN: 24, SPEED: 520 };
   var BALL_SIZE = 12;
 
-  var FIXED_DT = 1 / 240;          // physics sub-step (s); ball moves < 5px per step at max speed
-  var MAX_FRAME_DT = 0.1;          // clamp long frames (tab switch, debugger)
-  var MAX_BOUNCE_ANGLE = 55 * Math.PI / 180;
-  var MAX_SERVE_ANGLE = 30 * Math.PI / 180;
-  var MIN_VX_RATIO = 0.5;          // |vx| is always at least half the ball speed
-  var SPEED_UP = 1.05;             // speed multiplier per paddle hit
+  var FIXED_DT = 1 / 240; // physics sub-step (s); ball moves < 5px per step at max speed
+  var MAX_FRAME_DT = 0.1; // clamp long frames (tab switch, debugger)
+  var MAX_BOUNCE_ANGLE = (55 * Math.PI) / 180;
+  var MAX_SERVE_ANGLE = (30 * Math.PI) / 180;
+  var MIN_VX_RATIO = 0.5; // |vx| is always at least half the ball speed
+  var SPEED_UP = 1.05; // speed multiplier per paddle hit
 
   var BALL_SPEEDS = {
-    slow:   { start: 300, max: 650 },
+    slow: { start: 300, max: 650 },
     normal: { start: 400, max: 850 },
-    fast:   { start: 500, max: 1050 }
+    fast: { start: 500, max: 1050 },
   };
 
   // speed: px/s, reaction: s between target updates, error: aim offset (px),
   // mistakeChance: chance per incoming ball to badly misjudge it,
   // predict: compute landing point (incl. wall bounces) instead of chasing the ball.
   var AI_LEVELS = {
-    easy:   { speed: 290, reaction: 0.22, error: 36, mistakeChance: 0.15, predict: false, deadzone: 10 },
-    medium: { speed: 380, reaction: 0.12, error: 22, mistakeChance: 0.06, predict: false, deadzone: 6 },
-    hard:   { speed: 520, reaction: 0.05, error: 22, mistakeChance: 0.04, predict: true,  deadzone: 4 }
+    easy: {
+      speed: 290,
+      reaction: 0.22,
+      error: 36,
+      mistakeChance: 0.15,
+      predict: false,
+      deadzone: 10,
+    },
+    medium: {
+      speed: 380,
+      reaction: 0.12,
+      error: 22,
+      mistakeChance: 0.06,
+      predict: false,
+      deadzone: 6,
+    },
+    hard: {
+      speed: 520,
+      reaction: 0.05,
+      error: 22,
+      mistakeChance: 0.04,
+      predict: true,
+      deadzone: 4,
+    },
   };
 
-  // ---- Settings ----
+  //=============================================================
+
+  //                          SETTINGS
+
+  //=============================================================
   var STORAGE_KEY = 'retroPaddle.settings.v1';
   var DEFAULT_SETTINGS = { difficulty: 'medium', winScore: 11, sound: true, ballSpeed: 'normal' };
   var OPTIONS = {
     difficulty: ['easy', 'medium', 'hard'],
     winScore: [7, 11],
     sound: [true, false],
-    ballSpeed: ['slow', 'normal', 'fast']
+    ballSpeed: ['slow', 'normal', 'fast'],
   };
 
   function sanitizeSettings(raw) {
@@ -74,15 +108,23 @@
     }
   }
 
-  // ---- Helpers ----
-  function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
-  function sign(v) { return v > 0 ? 1 : v < 0 ? -1 : 0; }
+  //=============================================================
+
+  //                          HELPERS
+
+  //=============================================================
+  function clamp(v, lo, hi) {
+    return v < lo ? lo : v > hi ? hi : v;
+  }
+  function sign(v) {
+    return v > 0 ? 1 : v < 0 ? -1 : 0;
+  }
 
   // Small deterministic PRNG (used by tests for reproducible AI behaviour).
   function mulberry32(seed) {
     var a = seed >>> 0;
     return function () {
-      a = (a + 0x6D2B79F5) >>> 0;
+      a = (a + 0x6d2b79f5) >>> 0;
       var t = a;
       t = Math.imul(t ^ (t >>> 15), t | 1);
       t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
@@ -99,9 +141,20 @@
     return p;
   }
 
-  // ---- Match ----
+  //=============================================================
+
+  //                           MATCH
+
+  //=============================================================
   function createAI(level) {
-    return { level: level, cfg: AI_LEVELS[level], timer: 0, targetY: FIELD.H / 2, offset: 0, retarget: true };
+    return {
+      level: level,
+      cfg: AI_LEVELS[level],
+      timer: 0,
+      targetY: FIELD.H / 2,
+      offset: 0,
+      retarget: true,
+    };
   }
 
   function createMatch(opts) {
@@ -119,7 +172,7 @@
       winner: 0,
       rally: 0,
       accumulator: 0,
-      nextServeDir: 0
+      nextServeDir: 0,
     };
     m.speeds = BALL_SPEEDS[m.ballSpeed];
     m.ai = createAI(m.difficulty);
@@ -162,7 +215,7 @@
   function serve(m, dir) {
     centerBall(m);
     var b = m.ball;
-    dir = dir === 1 || dir === -1 ? dir : (m.rng() < 0.5 ? -1 : 1);
+    dir = dir === 1 || dir === -1 ? dir : m.rng() < 0.5 ? -1 : 1;
     var angle = (m.rng() * 2 - 1) * MAX_SERVE_ANGLE;
     b.speed = m.speeds.start;
     b.vx = dir * b.speed * Math.cos(angle);
@@ -175,7 +228,7 @@
 
   function bounceOff(m, p, dir) {
     var b = m.ball;
-    var rel = ((b.y + b.size / 2) - (p.y + p.h / 2)) / (p.h / 2 + b.size / 2);
+    var rel = (b.y + b.size / 2 - (p.y + p.h / 2)) / (p.h / 2 + b.size / 2);
     var angle = clamp(rel, -1, 1) * MAX_BOUNCE_ANGLE;
     b.speed = Math.min(b.speed * SPEED_UP, m.speeds.max);
     b.vx = dir * b.speed * Math.cos(angle);
@@ -191,12 +244,13 @@
    * the paddle, so one impact can never register twice.
    */
   function collidePaddle(m, p, px, py, dir) {
-    var b = m.ball, s = b.size;
+    var b = m.ball,
+      s = b.size;
     var face = dir === 1 ? p.x + p.w : p.x;
     var prevLead = dir === 1 ? px : px + s;
     var curLead = dir === 1 ? b.x : b.x + s;
     var before = (prevLead - face) * dir; // >= 0: leading edge was on the field side
-    var after = (curLead - face) * dir;   // < 0: leading edge is now past the face
+    var after = (curLead - face) * dir; // < 0: leading edge is now past the face
     var hit = false;
 
     if (before >= 0 && after < 0) {
@@ -210,7 +264,7 @@
       // still a return if the ball's centre hasn't passed the paddle's centre.
       var inX = b.x < p.x + p.w && b.x + s > p.x;
       var inY = b.y + s > p.y && b.y < p.y + p.h;
-      hit = inX && inY && ((b.x + s / 2) - (p.x + p.w / 2)) * dir > 0;
+      hit = inX && inY && (b.x + s / 2 - (p.x + p.w / 2)) * dir > 0;
     }
     if (!hit) return false;
 
@@ -234,7 +288,10 @@
 
   // Returns a movement direction in [-1, 1] for the right paddle.
   function aiDecide(m, dt) {
-    var ai = m.ai, cfg = ai.cfg, b = m.ball, p = m.right;
+    var ai = m.ai,
+      cfg = ai.cfg,
+      b = m.ball,
+      p = m.right;
 
     if (ai.retarget) {
       // A new incoming ball: pick this rally's aim error and start the reaction delay.
@@ -264,7 +321,9 @@
     return clamp(diff / maxMove, -1, 1); // never overshoots, never exceeds max speed
   }
 
-  function humanDir(v) { return sign(v || 0); }
+  function humanDir(v) {
+    return sign(v || 0);
+  }
 
   function awardPoint(m, scorer, events) {
     m.ball.active = false;
@@ -289,7 +348,8 @@
     var b = m.ball;
     if (!b.active || m.winner) return events;
 
-    var px = b.x, py = b.y;
+    var px = b.x,
+      py = b.y;
     b.x += b.vx * dt;
     b.y += b.vy * dt;
 
@@ -324,19 +384,39 @@
       m.accumulator -= FIXED_DT;
       var ev = step(m, FIXED_DT, input);
       for (var i = 0; i < ev.length; i++) events.push(ev[i]);
-      if (ev.indexOf('score') >= 0) { m.accumulator = 0; break; }
+      if (ev.indexOf('score') >= 0) {
+        m.accumulator = 0;
+        break;
+      }
     }
     return events;
   }
 
   return {
-    FIELD: FIELD, PADDLE: PADDLE, BALL_SIZE: BALL_SIZE, FIXED_DT: FIXED_DT,
-    MAX_BOUNCE_ANGLE: MAX_BOUNCE_ANGLE, MIN_VX_RATIO: MIN_VX_RATIO, SPEED_UP: SPEED_UP,
-    BALL_SPEEDS: BALL_SPEEDS, AI_LEVELS: AI_LEVELS,
-    STORAGE_KEY: STORAGE_KEY, DEFAULT_SETTINGS: DEFAULT_SETTINGS, OPTIONS: OPTIONS,
-    sanitizeSettings: sanitizeSettings, loadSettings: loadSettings, saveSettings: saveSettings,
-    mulberry32: mulberry32, createMatch: createMatch, resetMatch: resetMatch,
-    centerBall: centerBall, serve: serve, movePaddle: movePaddle, predictBallY: predictBallY,
-    aiDecide: aiDecide, step: step, advance: advance
+    FIELD: FIELD,
+    PADDLE: PADDLE,
+    BALL_SIZE: BALL_SIZE,
+    FIXED_DT: FIXED_DT,
+    MAX_BOUNCE_ANGLE: MAX_BOUNCE_ANGLE,
+    MIN_VX_RATIO: MIN_VX_RATIO,
+    SPEED_UP: SPEED_UP,
+    BALL_SPEEDS: BALL_SPEEDS,
+    AI_LEVELS: AI_LEVELS,
+    STORAGE_KEY: STORAGE_KEY,
+    DEFAULT_SETTINGS: DEFAULT_SETTINGS,
+    OPTIONS: OPTIONS,
+    sanitizeSettings: sanitizeSettings,
+    loadSettings: loadSettings,
+    saveSettings: saveSettings,
+    mulberry32: mulberry32,
+    createMatch: createMatch,
+    resetMatch: resetMatch,
+    centerBall: centerBall,
+    serve: serve,
+    movePaddle: movePaddle,
+    predictBallY: predictBallY,
+    aiDecide: aiDecide,
+    step: step,
+    advance: advance,
   };
 });

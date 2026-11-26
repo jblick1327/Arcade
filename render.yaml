@@ -5,13 +5,13 @@ services:
     plan: free
     region: virginia
     branch: master
-    buildCommand: npm ci --include=dev && npm run build
+    buildCommand: npm ci --include=dev && npm run build && node server/prefetch-mongod.js
     startCommand: npm start
     healthCheckPath: /healthz
     autoDeployTrigger: checksPass
     envVars:
       - key: NODE_VERSION
-        value: "22"
+        value: '22'
       - key: NODE_ENV
         value: production
       - key: SESSION_SECRET

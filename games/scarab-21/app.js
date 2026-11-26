@@ -1,5 +1,13 @@
+// app.js - Scarab 21 user interface
+// Author: Reachnid Group
+// Centennial College - Fall 2026
+
 (function () {
   'use strict';
+
+  //=============================================================
+  //                           SETUP
+  //=============================================================
 
   const { newGame, play, preview, total } = window.Scarab21;
   const symbols = { spades: '♠', hearts: '♥', clubs: '♣', diamonds: '♦' };
@@ -15,9 +23,14 @@
   const columns = document.getElementById('columns');
   const soundToggle = document.getElementById('sound');
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-  let game;
-  let badge;
+  let game; // current rules state (see rules.js)
+  let badge; // the floating "+points" label currently animating, if any
 
+  //=============================================================
+  //                          HELPERS
+  //=============================================================
+
+  // create an element with a class and optional text
   function element(tag, className, text) {
     const node = document.createElement(tag);
     node.className = className;
@@ -25,10 +38,12 @@
     return node;
   }
 
+  // spoken name of a card, e.g. 'Queen of hearts'
   function cardName({ rank, suit }) {
     return `${faces[rank] || rank} of ${suit}`;
   }
 
+  // the visual card element
   function cardFace(card) {
     const { rank, suit } = card;
     const red = suit === 'hearts' || suit === 'diamonds';
@@ -46,6 +61,11 @@
     window.ScarabAudio?.play(cue);
   }
 
+  //=============================================================
+  //                          COLUMNS
+  //=============================================================
+
+  // build the five columns once: a place button (with a preview of the result), the pile, and the total
   const lanes = Array.from({ length: 5 }, (_, index) => {
     const lane = element('div', 'lane');
     const button = element('button', 'place');
@@ -60,6 +80,11 @@
     return { lane, button, forecast, pile, sum };
   });
 
+  //=============================================================
+  //                         RENDERING
+  //=============================================================
+
+  // redraw scores, the current card and every column
   function render() {
     score.textContent = game.score;
     remaining.textContent = game.deck.length;
@@ -70,10 +95,18 @@
       const { value: next, legal, clear } = preview(game, index);
       button.disabled = game.over || !legal;
       button.dataset.result = !legal ? 'bust' : clear || 'fits';
-      forecast.textContent = !legal ? 'Would bust' : clear === 'board' ? 'Board clears'
-        : clear === 'column' ? `${next} · clears` : `${value} → ${next}`;
-      const description = !legal ? 'would bust' : clear === 'board' ? 'would clear the board'
-        : `would total ${next}${clear === 'column' ? ' and clear' : ''}`;
+      forecast.textContent = !legal
+        ? 'Would bust'
+        : clear === 'board'
+          ? 'Board clears'
+          : clear === 'column'
+            ? `${next} · clears`
+            : `${value} → ${next}`;
+      const description = !legal
+        ? 'would bust'
+        : clear === 'board'
+          ? 'would clear the board'
+          : `would total ${next}${clear === 'column' ? ' and clear' : ''}`;
       button.setAttribute('aria-label', `Column ${index + 1}, total ${value}, ${description}`);
       pile.replaceChildren(...cards.map(cardFace));
       sum.textContent = value || '–';
@@ -81,17 +114,27 @@
     again.hidden = !game.over;
   }
 
+  // animate the award label over the cleared column (or the whole board)
   function showClear(index, clear, message) {
     badge?.remove();
     if (reducedMotion.matches) return;
     const wholeBoard = clear === 'board';
-    const nextBadge = element('span', wholeBoard ? 'clear-award board-award' : 'clear-award', message);
+    const nextBadge = element(
+      'span',
+      wholeBoard ? 'clear-award board-award' : 'clear-award',
+      message,
+    );
     nextBadge.setAttribute('aria-hidden', 'true');
     (wholeBoard ? board : lanes[index].lane).append(nextBadge);
     nextBadge.addEventListener('animationend', () => nextBadge.remove(), { once: true });
     badge = nextBadge;
   }
 
+  //=============================================================
+  //                         GAME FLOW
+  //=============================================================
+
+  // submit the final score and report the outcome in the status bar
   async function submit(finishedGame) {
     const result = await window.Arcade?.submitScore(finishedGame.score);
     if (game !== finishedGame) return;
@@ -101,6 +144,7 @@
     else status.textContent = 'Could not save score.';
   }
 
+  // play the current card on column `index` (from a click or the 1-5 keys)
   function place(index) {
     const clear = preview(game, index)?.clear;
     const awards = play(game, index);
@@ -120,10 +164,12 @@
       submit(game);
     } else {
       status.textContent = `Draw: ${cardName(game.card)}.`;
-      if (document.activeElement === document.body) lanes.find(({ button }) => !button.disabled).button.focus();
+      if (document.activeElement === document.body)
+        lanes.find(({ button }) => !button.disabled).button.focus();
     }
   }
 
+  // start a new run
   function start() {
     badge?.remove();
     game = newGame();
@@ -132,6 +178,10 @@
     award.textContent = 'Choose a column for the draw.';
     status.textContent = `Draw: ${cardName(game.card)}.`;
   }
+
+  //=============================================================
+  //                           INPUT
+  //=============================================================
 
   again.addEventListener('click', () => {
     start();
@@ -143,9 +193,20 @@
   });
 
   document.addEventListener('keydown', (event) => {
-    if (event.repeat || event.ctrlKey || event.altKey || event.metaKey || !/^[1-5]$/.test(event.key)) return;
+    if (
+      event.repeat ||
+      event.ctrlKey ||
+      event.altKey ||
+      event.metaKey ||
+      !/^[1-5]$/.test(event.key)
+    )
+      return;
     place(Number(event.key) - 1);
   });
+
+  //=============================================================
+  //                           START
+  //=============================================================
 
   start();
 })();

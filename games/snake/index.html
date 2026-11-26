@@ -1,0 +1,43 @@
+<!doctype html>
+<!--
+  index.html - Snake: collect apples, grow longer and avoid the walls
+  Author: Reachnid Group
+  Centennial College - Fall 2026
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Snake | REACHNID</title>
+    <link rel="stylesheet" href="snake.css" />
+  </head>
+  <body>
+    <main class="game-container">
+      <h1>Snake</h1>
+      <p>Collect apples and beat your high score!</p>
+
+      <!-- score and best score -->
+      <div class="scoreboard">
+        <span>Score: <strong id="score">0</strong></span>
+        <span>High Score: <strong id="highScore">0</strong></span>
+      </div>
+
+      <!-- the board -->
+      <canvas id="gameCanvas" width="400" height="400"></canvas>
+
+      <p id="gameStatus">Press Start to play!</p>
+
+      <div class="controls">
+        <button id="startButton" type="button">Start Game</button>
+        <button id="restartButton" type="button">Restart</button>
+      </div>
+
+      <p>Use Arrow Keys or WASD to move.</p>
+      <p id="player" class="player"></p>
+    </main>
+
+    <!-- Arcade SDK (sends the score to the site), then the game -->
+    <script src="/sdk/arcade.js"></script>
+    <script src="snake.js"></script>
+  </body>
+</html>

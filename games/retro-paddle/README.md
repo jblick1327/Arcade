@@ -1,5 +1,7 @@
 # Retro Paddle
 
+_Author: Reachnid Group_
+
 A two-paddle arcade tennis game in the style of the early-1970s arcade machines:
 black screen, white paddles, a square ball, a dashed centre line and block-digit scores.
 Plain HTML5 Canvas, vanilla JavaScript, CSS and the Web Audio API. It has no dependencies

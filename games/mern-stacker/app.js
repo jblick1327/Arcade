@@ -1,33 +1,45 @@
+// app.js - MERN Stacker game loop, drawing and score submission
+// Author: Reachnid Group
+// Centennial College - Fall 2026
+
 (function () {
   'use strict';
 
-  const R = window.MernStacker;
+  //=============================================================
+  //                          SETTINGS
+  //=============================================================
+
+  const R = window.MernStacker; // rules.js
   const W = R.FIELD_W;
   const H = 640;
-  const BH = 28;          // block height
-  const GROUND_H = 64;    // height of the node_modules slab
-  const FOCUS = 230;      // keep the sliding block this far from the top of the frame
+  const BH = 28; // block height
+  const GROUND_H = 64; // height of the node_modules slab
+  const FOCUS = 230; // keep the sliding block this far from the top of the frame
   const GRAVITY = 1500;
-  const DYING_MS = 900;   // pause on the wreckage before the game-over card
+  const DYING_MS = 900; // pause on the wreckage before the game-over card
   const RESTART_GUARD_MS = 500; // stops a frantic last tap from instantly restarting
 
   const $ = (id) => document.getElementById(id);
   const canvas = $('canvas');
   const ctx = canvas.getContext('2d');
-  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reduceMotion =
+    window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   canvas.width = W * dpr;
   canvas.height = H * dpr;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  // ---------------------------------------------------------------- state
-  let phase = 'intro';     // intro | playing | dying | over
+  //=============================================================
+  //                           STATE
+  //=============================================================
+  let phase = 'intro'; // intro | playing | dying | over
   let blocks, mover, debris, popups, rings;
   let score, combo, camY, shake, dyingFor, overSince, failMsg, cuts, banner;
   let best = 0;
   let runId = 0;
 
+  // clear the tower and effects for a new run
   function reset() {
     blocks = [{ x: (W - R.START_W) / 2, w: R.START_W }];
     debris = [];
@@ -43,30 +55,46 @@
     spawnMover();
   }
 
+  // start the next block sliding in from alternating sides, as wide as the block below
   function spawnMover() {
     const top = blocks[blocks.length - 1];
     const dir = blocks.length % 2 ? 1 : -1;
     mover = { w: top.w, x: dir === 1 ? 0 : W - top.w, dir, speed: R.speedFor(score) };
   }
 
-  // World height (pixels above the ground slab) of the top of level `i`.
+  // world height (pixels above the ground slab) of the top of level `i`
   const worldTop = (i) => (i + 1) * BH;
   const screenY = (wy) => H - GROUND_H - wy + camY;
 
-  // ---------------------------------------------------------------- sound
+  //=============================================================
+  //                           SOUND
+  //=============================================================
   const Sfx = window.MernSfx;
   const soundBtn = $('sound');
-  function showSound() { soundBtn.textContent = 'sound: ' + (Sfx.muted ? 'off' : 'on'); }
-  try { Sfx.setMuted(localStorage.getItem('mern-stacker:muted') === '1'); } catch (e) { /* storage blocked */ }
+  function showSound() {
+    soundBtn.textContent = 'sound: ' + (Sfx.muted ? 'off' : 'on');
+  }
+  try {
+    Sfx.setMuted(localStorage.getItem('mern-stacker:muted') === '1');
+  } catch (e) {
+    /* storage blocked */
+  }
   showSound();
   soundBtn.addEventListener('click', () => {
     Sfx.setMuted(!Sfx.muted);
-    try { localStorage.setItem('mern-stacker:muted', Sfx.muted ? '1' : '0'); } catch (e) { /* fine */ }
+    try {
+      localStorage.setItem('mern-stacker:muted', Sfx.muted ? '1' : '0');
+    } catch (e) {
+      /* fine */
+    }
     showSound();
     soundBtn.blur();
   });
 
-  // ---------------------------------------------------------------- game flow
+  //=============================================================
+  //                         GAME FLOW
+  //=============================================================
+  // begin a run (from the intro, or after game over)
   function start() {
     Sfx.unlock();
     Sfx.start();
@@ -76,22 +104,30 @@
     $('over').hidden = true;
   }
 
+  // turn a sliced-off piece into a falling, spinning chunk
   function addDebris(piece, level, style, fall) {
     const centre = piece.x + piece.w / 2;
     const side = fall || (centre < W / 2 ? -1 : 1);
     debris.push({
-      x: piece.x, w: piece.w, wy: worldTop(level), style,
-      vx: side * (50 + Math.random() * 80), vy: -60, rot: 0, vr: side * (0.6 + Math.random()),
+      x: piece.x,
+      w: piece.w,
+      wy: worldTop(level),
+      style,
+      vx: side * (50 + Math.random() * 80),
+      vy: -60,
+      rot: 0,
+      vr: side * (0.6 + Math.random()),
     });
   }
 
-  // Floating text for a drop at `level`. It starts just above the next sliding block,
+  // floating text for a drop at `level`. It starts just above the next sliding block,
   // so it never sits on top of the block you are about to aim.
   function popup(text, level, x, color) {
     for (const p of popups) p.t = Math.max(p.t, 0.9); // hurry older ones off so they never overlap
     popups.push({ text, wx: x, wy: worldTop(level + 1) + 12, t: 0, color: color || '#e6edf3' });
   }
 
+  // drop the sliding block: trim the overhang, score, and spawn the next one (or fail)
   function drop() {
     const level = blocks.length;
     const top = blocks[level - 1];
@@ -123,8 +159,12 @@
       const regrew = grown.w > placed.w;
       placed = grown;
       rings.push({ x: placed.x, w: placed.w, wy: worldTop(level), t: 0 });
-      popup(R.pick(style.perfect) + (combo > 1 ? ' x' + combo : '') + (regrew ? ' +width' : ''),
-        level, placed.x + placed.w / 2, '#7ee787');
+      popup(
+        R.pick(style.perfect) + (combo > 1 ? ' x' + combo : '') + (regrew ? ' +width' : ''),
+        level,
+        placed.x + placed.w / 2,
+        '#7ee787',
+      );
       Sfx.perfect(combo);
       if (regrew) Sfx.grow();
     } else {
@@ -141,6 +181,7 @@
     spawnMover();
   }
 
+  // single input action: start, drop, or restart depending on the phase
   function press() {
     if (phase === 'intro') start();
     else if (phase === 'playing') drop();
@@ -165,7 +206,10 @@
   $('start').addEventListener('click', start);
   $('again').addEventListener('click', start);
 
-  // ---------------------------------------------------------------- game over
+  //=============================================================
+  //                         GAME OVER
+  //=============================================================
+  // show the game-over card, submit the score, then load the leaderboard
   async function finish() {
     phase = 'over';
     overSince = performance.now();
@@ -193,26 +237,39 @@
 
     const lb = await Arcade.getLeaderboard(5);
     if (mine !== runId || !lb.ok || !Array.isArray(lb.entries)) return;
-    const rows = lb.entries.slice().sort((a, b) => b.score - a.score).slice(0, 5);
+    const rows = lb.entries
+      .slice()
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
     const board = $('board');
-    board.replaceChildren(...rows.map((row) => {
-      const li = document.createElement('li');
-      const name = document.createElement('span');
-      const pts = document.createElement('b');
-      name.textContent = row.name;   // names come from other players: text only, never HTML
-      pts.textContent = row.score;
-      li.append(name, pts);
-      return li;
-    }));
+    board.replaceChildren(
+      ...rows.map((row) => {
+        const li = document.createElement('li');
+        const name = document.createElement('span');
+        const pts = document.createElement('b');
+        name.textContent = row.name; // names come from other players: text only, never HTML
+        pts.textContent = row.score;
+        li.append(name, pts);
+        return li;
+      }),
+    );
   }
 
-  // ---------------------------------------------------------------- update
+  //=============================================================
+  //                           UPDATE
+  //=============================================================
+  // advance the simulation by `dt` seconds
   function update(dt) {
     if (phase === 'intro' || phase === 'playing') {
       mover.x += mover.dir * mover.speed * dt;
       const max = W - mover.w;
-      if (mover.x < 0) { mover.x = -mover.x; mover.dir = 1; }
-      else if (mover.x > max) { mover.x = 2 * max - mover.x; mover.dir = -1; }
+      if (mover.x < 0) {
+        mover.x = -mover.x;
+        mover.dir = 1;
+      } else if (mover.x > max) {
+        mover.x = 2 * max - mover.x;
+        mover.dir = -1;
+      }
     }
 
     const target = Math.max(0, worldTop(blocks.length) - (H - GROUND_H - FOCUS));
@@ -239,13 +296,17 @@
     }
   }
 
-  // ---------------------------------------------------------------- draw
+  //=============================================================
+  //                            DRAW
+  //=============================================================
+  // lighten (positive `amt`) or darken a #rrggbb colour
   function shade(hex, amt) {
     const n = parseInt(hex.slice(1), 16);
     const c = (v) => Math.max(0, Math.min(255, v + amt));
     return 'rgb(' + c(n >> 16) + ',' + c((n >> 8) & 255) + ',' + c(n & 255) + ')';
   }
 
+  // one tower block with bevels and its label (full name if it fits, else its letter)
   function drawBlock(x, y, w, style) {
     ctx.fillStyle = style.color;
     ctx.fillRect(x, y, w, BH);
@@ -269,7 +330,7 @@
     ctx.fillStyle = g;
     ctx.fillRect(-20, -20, W + 40, H + 40);
 
-    // Editor gutter: faint line numbers that scroll with the tower.
+    // editor gutter: faint line numbers that scroll with the tower
     ctx.font = '11px ui-monospace, Menlo, Consolas, monospace';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
@@ -299,7 +360,7 @@
     ctx.fillText('node_modules/  (1.2 GB)', W / 2, y + 26);
   }
 
-  // Text with a dark outline so it stays readable over blocks and gutter numbers.
+  // text with a dark outline so it stays readable over blocks and gutter numbers
   function outlinedText(text, x, y, color) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -311,6 +372,7 @@
     ctx.fillText(text, x, y);
   }
 
+  // score, scope percentage, streak and release banner
   function drawHud() {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
@@ -319,7 +381,7 @@
     ctx.fillText(String(score), W / 2, 78);
     ctx.fillStyle = 'rgba(139,148,158,0.8)';
     ctx.font = '12px ui-monospace, Menlo, Consolas, monospace';
-    const scope = Math.round(100 * blocks[blocks.length - 1].w / R.START_W);
+    const scope = Math.round((100 * blocks[blocks.length - 1].w) / R.START_W);
     ctx.fillText('stack.length  \u00b7  scope ' + scope + '%', W / 2, 98);
     if (combo >= 2) {
       ctx.fillStyle = '#7ee787';
@@ -334,6 +396,7 @@
     }
   }
 
+  // Render one frame
   function draw() {
     ctx.save();
     if (shake > 0) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
@@ -371,7 +434,7 @@
     ctx.font = '700 15px ui-monospace, Menlo, Consolas, monospace';
     for (const p of popups) {
       ctx.globalAlpha = Math.max(0, 1 - p.t / 1.1);
-      // Keep the whole string inside the frame, however long it is.
+      // keep the whole string inside the frame, however long it is
       const half = ctx.measureText(p.text).width / 2 + 10;
       const x = Math.max(half, Math.min(W - half, p.wx));
       outlinedText(p.text, x, screenY(p.wy) - p.t * 36, p.color);
@@ -382,10 +445,14 @@
     ctx.restore();
   }
 
-  // ---------------------------------------------------------------- boot
+  //=============================================================
+  //                            BOOT
+  //=============================================================
   reset();
   Arcade.ready().then(({ user }) => {
-    $('who-intro').textContent = user ? 'Playing as ' + user.name : 'Playing as guest: scores will not be saved.';
+    $('who-intro').textContent = user
+      ? 'Playing as ' + user.name
+      : 'Playing as guest: scores will not be saved.';
   });
 
   let last = performance.now();

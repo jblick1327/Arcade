@@ -1,0 +1,9 @@
+# Shared platform code: changes here need approval from a backend owner.
+# Everything else (games, client pages) can be approved by any teammate.
+/server/              @jblick1327 @DarrynLong
+/sdk/                 @jblick1327 @DarrynLong
+/games/*/server.js    @jblick1327 @DarrynLong
+/.github/             @jblick1327 @DarrynLong
+/render.yaml          @jblick1327 @DarrynLong
+/package.json         @jblick1327 @DarrynLong
+/package-lock.json    @jblick1327 @DarrynLong

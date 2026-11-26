@@ -1,0 +1,499 @@
+/*
+  style.css - styles for the 2048 game page
+  Author: Reachnid Group
+  Centennial College - Fall 2026
+*/
+
+/*=============================================================
+                        BASE STYLES
+=============================================================*/
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: #fff9e9;
+  color: #222222;
+  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+}
+
+button {
+  font-family: inherit;
+}
+
+/* popups use the hidden attribute - keep it stronger than their display: flex */
+[hidden] {
+  display: none !important;
+}
+
+/*=============================================================
+                        MAIN LAYOUT
+=============================================================*/
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 30px 15px;
+}
+
+.game-container {
+  width: 100%;
+  max-width: 480px;
+}
+
+/*=============================================================
+                        GAME HEADER
+=============================================================*/
+
+.game-header {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 25px;
+  text-align: center;
+  padding: 0;
+}
+
+.game-header h1 {
+  font-size: 65px;
+  font-weight: 900;
+  color: #e50914;
+  margin: 0;
+}
+
+.game-header p {
+  color: #666666;
+  font-size: 14px;
+  margin: 5px 0 0;
+}
+
+.new-game-button {
+  background: #e50914;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 13px 18px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.2s;
+  white-space: nowrap;
+}
+
+.new-game-button:hover {
+  background: #b80710;
+  transform: translateY(-2px);
+}
+
+/*=============================================================
+                           SCORE
+=============================================================*/
+
+.score-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.score-box {
+  flex: 0 1 130px;
+  background: #eeeeea;
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+}
+
+.score-box span {
+  display: block;
+  color: #777777;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+.score-box strong {
+  display: block;
+  color: #222222;
+  font-size: 25px;
+  margin-top: 4px;
+}
+
+/*=============================================================
+                        GAME BOARD
+=============================================================*/
+
+.game-board {
+  width: 100%;
+  aspect-ratio: 1;
+  background: #292929;
+  border-radius: 12px;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+.game-board-inner {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.empty-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  gap: 10px;
+  width: 100%;
+  height: 100%;
+}
+
+.empty-cell {
+  background: #3b3b3b;
+  border-radius: 6px;
+}
+
+/*=============================================================
+                           TILES
+=============================================================*/
+
+.tile {
+  position: absolute;
+  padding: 0;
+  width: calc(25% - 7.5px);
+  height: calc(25% - 7.5px);
+  transition:
+    left 140ms ease-in-out,
+    top 140ms ease-in-out;
+  will-change: left, top;
+}
+
+.tile-value {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 6px;
+  font-size: clamp(18px, 5vw, 34px);
+  font-weight: 900;
+  color: #ffffff;
+}
+
+/* TILE COLORS */
+
+.tile-2 .tile-value {
+  background: #eee4da;
+  color: #333333;
+}
+
+.tile-4 .tile-value {
+  background: #ede0c8;
+  color: #333333;
+}
+
+.tile-8 .tile-value {
+  background: #f2b179;
+}
+
+.tile-16 .tile-value {
+  background: #f59563;
+}
+
+.tile-32 .tile-value {
+  background: #f67c5f;
+}
+
+.tile-64 .tile-value {
+  background: #ed5535;
+}
+
+.tile-128 .tile-value {
+  background: #edcf72;
+  font-size: clamp(16px, 4vw, 29px);
+}
+
+.tile-256 .tile-value {
+  background: #edcc61;
+  font-size: clamp(16px, 4vw, 29px);
+}
+
+.tile-512 .tile-value {
+  background: #edc850;
+  font-size: clamp(16px, 4vw, 29px);
+}
+
+.tile-1024 .tile-value {
+  background: #edc53f;
+  font-size: clamp(14px, 3.5vw, 25px);
+}
+
+.tile-2048 .tile-value {
+  background: #e50914;
+  font-size: clamp(14px, 3.5vw, 25px);
+}
+
+/* TILE ANIMATIONS */
+
+.new-tile .tile-value {
+  animation: tileAppear 180ms ease;
+}
+
+.merged-tile .tile-value {
+  animation: tileMerge 180ms ease;
+}
+
+@keyframes tileAppear {
+  from {
+    transform: scale(0.5);
+    opacity: 0.5;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes tileMerge {
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.15);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+/*=============================================================
+                        WIN MESSAGE
+=============================================================*/
+
+.win-message {
+  background: #fff1d6;
+  border: 2px solid #e50914;
+  padding: 15px;
+  border-radius: 8px;
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+.win-message h2 {
+  color: #e50914;
+  margin-bottom: 10px;
+}
+
+.win-message button {
+  background: #e50914;
+  color: white;
+  padding: 9px 15px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/*=============================================================
+                        INSTRUCTIONS
+=============================================================*/
+
+.instructions {
+  margin-top: 20px;
+  text-align: center;
+  color: #666666;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.instructions strong {
+  color: #222222;
+}
+
+/*=============================================================
+                       POPUP OVERLAY
+=============================================================*/
+
+.game-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 20, 20, 0.65);
+  backdrop-filter: blur(5px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  z-index: 1000;
+  animation: overlayAppear 0.25s ease;
+}
+
+/*=============================================================
+                      GAME OVER POPUP
+=============================================================*/
+
+.game-over-popup,
+.how-to-play-popup {
+  width: 100%;
+  max-width: 350px;
+  background: #fffdf5;
+  border: 2px solid #e50914;
+  border-radius: 18px;
+  padding: 35px 25px;
+  text-align: center;
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.3);
+  animation: popupAppear 0.3s ease;
+}
+
+.game-over-icon {
+  width: 65px;
+  height: 65px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 15px;
+  border-radius: 50%;
+  background: #e50914;
+  color: white;
+  font-size: 40px;
+  font-weight: 900;
+}
+
+.game-over-popup h2,
+.how-to-play-popup h2 {
+  color: #e50914;
+  font-size: 30px;
+  font-weight: 900;
+  margin-bottom: 10px;
+}
+
+.game-over-popup p,
+.how-to-play-popup p {
+  color: #666666;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.final-score {
+  background: #fff1d6;
+  border-radius: 10px;
+  padding: 15px;
+  margin-top: 22px;
+}
+
+.final-score span {
+  display: block;
+  color: #777777;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+.final-score strong {
+  display: block;
+  color: #222222;
+  font-size: 32px;
+  margin-top: 5px;
+}
+
+/* POPUP BUTTONS */
+
+.game-over-popup button,
+.how-to-play-popup button {
+  width: 100%;
+  margin-top: 22px;
+  padding: 14px;
+  background: #e50914;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.game-over-popup button:hover,
+.how-to-play-popup button:hover {
+  background: #b80710;
+  transform: translateY(-2px);
+}
+
+/* HOW TO PLAY DETAILS */
+
+.how-to-play-details {
+  text-align: left;
+  margin-top: 20px;
+}
+
+.how-to-play-details p {
+  margin-bottom: 14px;
+}
+
+.how-to-play-details strong {
+  color: #e50914;
+  font-size: 15px;
+}
+
+/* POPUP ANIMATIONS */
+
+@keyframes overlayAppear {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes popupAppear {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/*=============================================================
+                   MOBILE RESPONSIVENESS
+=============================================================*/
+
+@media (max-width: 500px) {
+  .game-header h1 {
+    font-size: 50px;
+  }
+
+  .game-header p {
+    font-size: 12px;
+  }
+
+  .new-game-button {
+    padding: 11px 13px;
+    font-size: 12px;
+  }
+
+  .game-board {
+    padding: 6px;
+  }
+
+  .empty-grid {
+    gap: 6px;
+  }
+
+  .game-header {
+    margin-bottom: 20px;
+  }
+}

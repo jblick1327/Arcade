@@ -1,17 +1,25 @@
-/*
- * main.js — browser wiring: canvas scaling, keyboard/mouse input, game loop.
- */
+// main.js - Retro Paddle browser wiring: canvas scaling, keyboard/mouse input and the game loop
+// Author: Reachnid Group
+// Centennial College - Fall 2026
+
+// browser wiring: canvas scaling, keyboard/mouse input, game loop.
+
 (function () {
   'use strict';
 
   var Core = window.PaddleCore;
-  var W = Core.FIELD.W, H = Core.FIELD.H;
+  var W = Core.FIELD.W,
+    H = Core.FIELD.H;
   var canvas = document.getElementById('game');
   var ctx = canvas.getContext('2d');
   var audio = window.PaddleAudio.create();
 
   var storage = null;
-  try { storage = window.localStorage; } catch (e) { storage = null; }
+  try {
+    storage = window.localStorage;
+  } catch (e) {
+    storage = null;
+  }
 
   // Arcade leaderboard: only 1-player matches count, and the score is the
   // number of points the player took off the AI. 2-player games aren't saved.
@@ -26,7 +34,8 @@
   // Fit the fixed 800x600 field into the window, keeping the 4:3 aspect ratio.
   function resize() {
     var cssScale = Math.min(window.innerWidth / W, window.innerHeight / H);
-    var cssW = Math.floor(W * cssScale), cssH = Math.floor(H * cssScale);
+    var cssW = Math.floor(W * cssScale),
+      cssH = Math.floor(H * cssScale);
     var dpr = window.devicePixelRatio || 1;
     canvas.style.width = cssW + 'px';
     canvas.style.height = cssH + 'px';
@@ -48,9 +57,15 @@
     var handled = app.keyDown(e.code, e.repeat);
     if (handled || BLOCK_DEFAULT[e.code]) e.preventDefault();
   });
-  window.addEventListener('keyup', function (e) { app.keyUp(e.code); });
-  window.addEventListener('blur', function () { app.blur(); });
-  document.addEventListener('visibilitychange', function () { if (document.hidden) app.blur(); });
+  window.addEventListener('keyup', function (e) {
+    app.keyUp(e.code);
+  });
+  window.addEventListener('blur', function () {
+    app.blur();
+  });
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) app.blur();
+  });
 
   canvas.addEventListener('mousemove', function (e) {
     var p = toLogical(e);

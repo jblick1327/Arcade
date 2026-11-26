@@ -1,0 +1,106 @@
+<!doctype html>
+<!--
+  index.html - 2048: slide and combine numbered tiles to reach 2048
+  Author: Reachnid Group
+  Centennial College - Fall 2026
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>2048 | REACHNID</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <div class="game-container">
+        <!-- game header -->
+        <header class="game-header">
+          <div>
+            <h1>2048</h1>
+            <p>Join the numbers. Reach the 2048 tile!</p>
+          </div>
+          <button id="newGame" class="new-game-button" type="button">New Game</button>
+        </header>
+
+        <!-- score and best -->
+        <div class="score-container">
+          <div class="score-box">
+            <span>SCORE</span>
+            <strong id="score">0</strong>
+          </div>
+          <div class="score-box">
+            <span>BEST</span>
+            <strong id="best">0</strong>
+          </div>
+        </div>
+
+        <!-- win message -->
+        <div id="winMessage" class="win-message" hidden>
+          <h2>You reached 2048!</h2>
+          <button id="keepPlaying" type="button">Keep Playing</button>
+        </div>
+
+        <!-- game board: the empty grid with the tiles layered on top -->
+        <div class="game-board">
+          <div class="game-board-inner">
+            <div id="emptyGrid" class="empty-grid"></div>
+            <div id="tiles"></div>
+          </div>
+        </div>
+
+        <!-- instructions -->
+        <div class="instructions">
+          <p><strong>How to play:</strong> Use your arrow keys or WASD to move the tiles.</p>
+          <p>Combine matching numbers to reach 2048!</p>
+        </div>
+      </div>
+
+      <!-- how to play popup (shown when the game opens) -->
+      <div id="howToPlay" class="game-overlay">
+        <div class="how-to-play-popup">
+          <h2>HOW TO PLAY</h2>
+          <p>Welcome to 2048! Your goal is to combine numbers until you reach the 2048 tile.</p>
+          <div class="how-to-play-details">
+            <p>
+              <strong>1. Move Your Tiles</strong><br />
+              Use your arrow keys or WASD to move tiles around.
+            </p>
+            <p>
+              <strong>2. Combine Numbers</strong><br />
+              Match two tiles with the same number to combine them.
+            </p>
+            <p>
+              <strong>3. Reach 2048</strong><br />
+              Keep combining numbers until you create the 2048 tile!
+            </p>
+            <p>
+              <strong>4. Don't Fill the Board</strong><br />
+              If there are no empty spaces or matching neighbours, the game is over.
+            </p>
+          </div>
+          <button id="startPlaying" type="button">Got It, Let's Play!</button>
+        </div>
+      </div>
+
+      <!-- game over popup -->
+      <div id="gameOver" class="game-overlay" hidden>
+        <div class="game-over-popup">
+          <div class="game-over-icon">!</div>
+          <h2>GAME OVER</h2>
+          <p>No more moves available.</p>
+          <div class="final-score">
+            <span>YOUR FINAL SCORE</span>
+            <strong id="finalScore">0</strong>
+          </div>
+          <button id="tryAgain" type="button">Try Again</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Arcade SDK, the rules, then the page -->
+    <script src="/sdk/arcade.js"></script>
+    <script defer src="rules.js"></script>
+    <script defer src="app.js"></script>
+  </body>
+</html>

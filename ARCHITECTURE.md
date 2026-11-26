@@ -1,5 +1,7 @@
 # Arcade — architecture
 
+_Author: Reachnid Group_
+
 How the site, the API and the SDK fit together. **You don't need this to add a game:** start with [GAMES.md](GAMES.md). Read this when you change the server, the client or the SDK, or when you build an online multiplayer game.
 
 A small MERN site that hosts web games made by a group of classmates. Players log in, play, and their scores are recorded. One game (Automate) is two-player online.
@@ -14,33 +16,70 @@ arcade/
   .env.example          MONGODB_URI, SESSION_SECRET, PORT
   vite.config.js        root: 'client'; dev proxy for /api, /games, /sdk -> http://localhost:3000
   ARCHITECTURE.md  GAMES.md  README.md
-  .github/workflows/ci.yml   runs npm test, npm run build and npm audit on every PR
+  .prettierrc.json      code style (npm run format)
+  .github/workflows/ci.yml   runs npm test, npm run build, the smoke test and npm audit on every PR
+  .github/pull_request_template.md
   sdk/arcade.js         what games include
   games/
     _template/          the starter game
-    automate/  scarab-21/
+    2048/  automate/  boarded-up/  crowns-and-bones/  doors/  mern-stacker/  retro-paddle/  scarab-21/  snake/
+                        (a game folder may add server.js: see "Game server hooks",
+                         and thumbnail.svg/png for its card on the Games page)
   server/
-    index.js            app setup, static serving, starts listening
-    models.js           User, Score, Match
-    games.js            reads games/*/game.json
-    automate.js         server-side rules for Automate matches
-    routes/auth.js  routes/games.js  routes/matches.js
+    server.js           app setup, static serving, starts listening
+    memory-db.js        throwaway in-memory MongoDB (dev:local, smoke test, PR previews)
+    prefetch-mongod.js  build step: downloads mongod for PR previews only
+    smoke.js            boots the real server and checks the site loads (npm run test:smoke)
+    models/             user_model.js  score_model.js  match_model.js
+    controllers/        auth_controller.js  game_controller.js  match_controller.js (request handlers)
+    routes/             auth_routes.js  game_routes.js  match_routes.js (URL -> controller)
+    middleware/         auth_middleware.js (requireAuth)
+    utils/              game_catalog.js (reads games/*/game.json, loads optional games/*/server.js hooks)
+    tests/              *.test.js
   client/
     index.html
-    src/main.jsx  App.jsx  api.js  bridge.js (the site half of the SDK)
-    src/pages/Home.jsx  Play.jsx  Login.jsx  Register.jsx
+    public/img/         REACHNID logos (light and dark)
+    src/main.jsx  App.jsx
+    src/components/     Navbar.jsx  ArcadeMachine.jsx
+    src/hooks/          useTheme.js (light/dark theme)
+    src/pages/          Home.jsx  Games.jsx  Play.jsx  Leaderboard.jsx  Auth.jsx  About.jsx  Contact.jsx
+    src/styles/         site.css  reachnid.css  pages.css  auth.css
+    src/utils/          api.js  bridge.js (the site half of the SDK)
 ```
 
-Dependencies: `express`, `mongoose`, `express-session`, `connect-mongo`, `bcryptjs`, `dotenv`; `react`, `react-dom`, `react-router-dom`; dev: `vite`, `@vitejs/plugin-react`, `concurrently`. Keep it that way unless there is a good reason.
+Dependencies: `express`, `mongoose`, `express-session`, `connect-mongo`, `bcryptjs`, `dotenv`; `react`, `react-dom`, `react-router-dom`; dev: `vite`, `@vitejs/plugin-react`, `concurrently`, `mongodb-memory-server-core` (so nobody needs a database to run the site), `prettier`. Keep it that way unless there is a good reason.
 
 Scripts:
 
-- `npm run dev` — Express on 3000 (`node --watch server/index.js`) and Vite on 5173 together. Developers open `http://localhost:5173`.
-- `npm test` — server and game tests with Node's built-in runner (no database needed).
+- `npm run dev` — Express on 3000 (`node --watch server/server.js`) and Vite on 5173 together, using the database in `.env`. Developers open `http://localhost:5173`.
+- `npm run dev:local` — the same, with `--memory-db`: a throwaway in-memory database, no `.env` needed. Data resets whenever the server restarts.
+- `npm test` — `test:platform` then `test:games`, with Node's built-in runner (no database needed).
+- `npm run test:platform` — `server/**/*.test.js` only; `npm run test:games` — every `games/*/tests/*.cjs`.
 - `npm run build` — Vite build to `client/dist`.
+- `npm run test:smoke` — after a build, starts the real server on an in-memory database and checks the health check, client, SDK, every game, registration, scores and match creation. Not part of `npm test`, because its first run downloads mongod.
 - `npm start` — Express only, serving `client/dist`.
 
-## Static serving (server/index.js)
+## Free hosting: Render + MongoDB Atlas
+
+The root [`render.yaml`](render.yaml) creates one **Free** Render web service in Virginia. Express serves the React build, API, games and SDK from the same HTTPS origin. Render generates `SESSION_SECRET`, supplies `PORT`, and deploys updates from `master` after CI passes.
+
+1. In [MongoDB Atlas](https://cloud.mongodb.com/), create a **Free (M0)** cluster, preferably on AWS in Northern Virginia (`us-east-1`). Create a database user with `readWrite` access to the `arcade` database.
+2. Copy the cluster's **Drivers** connection string, replace the username/password placeholders, and set the database name to `arcade`: `mongodb+srv://<username>:<password>@<cluster-host>/arcade?retryWrites=true&w=majority`. URL-encode special characters in the username and password. Keep the completed URI out of Git.
+3. In [Render](https://dashboard.render.com/), choose **New → Blueprint**, connect this repository and select `master`. Review that the service uses the **Free** plan, then enter the connection string as `MONGODB_URI`.
+4. Once the service exists, copy its outbound IP ranges from **Connect → Outbound** into Atlas's **Network Access** IP access list. Allow all listed ranges so the connection survives Render's routing changes. If the first deploy fails before the allowlist is ready, redeploy after saving it.
+5. Open the assigned `https://…onrender.com` URL. `/healthz` should return `{"status":"ok"}`. Register, refresh to check that your login persists, then play a game and check its leaderboard. Use two accounts to check an Automate match.
+
+Free Render services sleep after 15 minutes without incoming traffic and can take about a minute to wake up. Leave payment details unset for a strictly free setup: if included bandwidth or build minutes run out, Render suspends the relevant service or builds instead of billing overages. Atlas Free clusters do not expire. See [Render's free limits](https://render.com/docs/free) and [Atlas Free setup](https://www.mongodb.com/docs/atlas/tutorial/deploy-free-tier-cluster/).
+
+### Throwaway database
+
+`server/server.js` uses an in-memory MongoDB (`server/memory-db.js`) instead of `MONGODB_URI` when it is started with `--memory-db` or when Render sets `IS_PULL_REQUEST=true`. `SESSION_SECRET` is optional in that mode. The mongod binary downloads on first use into `node_modules/.cache/mongodb-memory-server`; CI caches it, and Render's build runs `server/prefetch-mongod.js`, which downloads it only for previews. Production never loads the package.
+
+### PR previews
+
+Render can deploy each pull request to its own temporary URL. Turn it on in the service's **Previews** tab: **Manual** creates a preview only for PRs with `[render preview]` in the title; **Automatic** creates one for every PR. Previews copy production's environment, including `MONGODB_URI`, so the server ignores it and starts empty on the in-memory database. A preview's data is lost whenever it sleeps or redeploys. Previews of a Free service are free, but they share the workspace's monthly Free instance hours with production.
+
+## Static serving (server/server.js)
 
 Mount in this order:
 
@@ -52,7 +91,7 @@ Mount in this order:
 
 Sessions: `express-session` with `connect-mongo`, secret from `SESSION_SECRET`, cookie `httpOnly`, `sameSite: 'lax'`, 30 days, `saveUninitialized: false`. The session stores only `userId`.
 
-## Game registry (server/games.js)
+## Game registry (server/utils/game_catalog.js)
 
 On each request to the games endpoints, read the `games/` directory (no caching, so a new folder shows up on refresh). A folder is a game when:
 
@@ -72,7 +111,7 @@ On each request to the games endpoints, read the `games/` directory (no caching,
 
 A folder with a broken `game.json` is skipped and logged with `console.warn`; it must not crash the server. The game object returned by the API is these fields plus `slug`.
 
-## Data (server/models.js)
+## Data (server/models/)
 
 ```
 User   { name, nameLower (unique index), passwordHash, createdAt }
@@ -113,7 +152,7 @@ Leaderboard rules (limit clamped to 1–100):
 
 ### Matches
 
-A match is a shared JSON blob with a version number and a turn. The server does not know any game's rules, except Automate's (see below).
+A match is a shared JSON blob with a version number and a turn. The platform does not know any game's rules; a game that needs the server to enforce them provides a server hook (see "Game server hooks" below).
 
 The match object returned everywhere (two-player Automate example; four-player matches include up to four entries in `players`):
 
@@ -122,9 +161,11 @@ The match object returned everywhere (two-player Automate example; four-player m
   "id": "…", "game": "automate",
   "players": [{"id": "…", "name": "ann"}, {"id": "…", "name": "bob"}],
   "status": "active", "turn": 0, "state": {}, "winner": null, "version": 3,
-  "you": 0
+  "you": 0, "blocked": null, "actions": []
 }
 ```
+
+`blocked` is a message from the game's hook when the match cannot continue as saved (otherwise `null`). `actions` lists the named actions the game currently offers the requester, as `{name, label, confirm?}`; it is always empty for spectators.
 
 `you` is the requester's index in `players` (0–1 for two-player games, 0–3 for four-player games), or `null` for spectators and guests. `players[0]` is always the creator.
 
@@ -135,29 +176,51 @@ The match object returned everywhere (two-player Automate example; four-player m
 | `POST /api/matches/:id/join` (auth) | `200 match` — adds me in the next seat, `version + 1`; stays `waiting` until `maxPlayers` joins, then becomes `active`. If already joined, return unchanged. | `404`; `409` full or concurrent join conflict |
 | `GET /api/matches/:id` | `200 match` (no auth needed) | `404` |
 | `PUT /api/matches/:id` `{version, state, turn, result?}` (auth) | `200 match` | see below |
-| `POST /api/matches/:id/restart-draft` `{version}` (auth) | `200 match` — Automate only: resets an active draft that the current rules cannot continue (`state.restartRequired`) to an empty draft, `version + 1`. Either player may call it. | `404`; `403` not a player; `409 {error, match}` if `version` is stale or the match is not a restartable Automate draft |
+| `POST /api/matches/:id/actions/:action` `{version}` (auth) | `200 match` — runs a named action from the game's hook (for example Automate's `restart-draft`), `version + 1`. Any player in the match may call it. | `404`; `403` not a player; `409 {error, match}` if `version` is stale or the game does not currently offer that action |
 
 `PUT` checks, in order:
 
-1. `404` if the match does not exist. `403` if the requester is not one of the players.
-2. `409 {error, match}` (including the current match object) if `status` is not `active`, or the requester's index is not `match.turn`, or `version` does not equal `match.version`.
+1. `404` if the match does not exist. `403` if the requester is not one of the players. `404` if the match's game folder no longer exists.
+2. `409 {error, match}` (including the current match object) if `status` is not `active`, the game's hook reports the match as `blocked`, the requester's index is not the current turn (as returned by the hook's `view`, if any), or `version` does not equal `match.version`.
 3. `400` if `turn` is not an occupied player seat (0 through `players.length - 1`), if `state` serialises to more than 64,000 characters, or if `result` is present and `result.winner` is not an occupied seat or `null`.
-4. For `automate` matches, the update must also pass `validateAutomateUpdate` in `server/automate.js` (one legal placement or move at a time; the result is computed from the position), otherwise `400`.
+4. If the game has a hook with `validateUpdate`, it decides what is saved, including any result; `null` means `400 invalid-update`.
 5. Otherwise store `state` and `turn`, add 1 to `version`. If `result` is present, also set `winner` and `status: 'done'`.
-
-For Automate, saved drafts from older rule versions are checked when a match is read; if the current rules cannot continue one, its `state` is returned as `{ restartRequired: true, … }` and only `restart-draft` can change it.
 
 Make the write atomic: `findOneAndUpdate` filtered on `_id`, `version`, `status: 'active'`; if it matches nothing, answer `409` with the current match. Join also filters on `status: 'waiting'` and `version`, preventing concurrent joins from overfilling a lobby.
 
+#### Game server hooks
+
+A game folder may contain `server.js` (CommonJS via `module.exports`, like the rest of `games/`). `server/utils/game_catalog.js` (`getGameServer`) loads it on first use and caches it; a hook that exists but fails to load makes the request fail rather than skip validation. Every export is optional:
+
+| Export | Called | Returns |
+|---|---|---|
+| `view({state, turn, status})` | on every read of a match, and before every write | `{state, turn, blocked?}` — the state as players should see it; `blocked` is a message shown when play cannot continue |
+| `validateUpdate(state, actor, {state, turn, result})` | on `PUT`, with the viewed current state and the writer's seat | the fields to `$set`, or `null` to refuse |
+| `actions: { name: { label, confirm?, available({state, status}), run({state, status, actor}) } }` | `available` when presenting a match and before `run`; `run` on `POST /actions/:name` | `available` returns a boolean; `run` returns the fields to `$set`, or `null` |
+
+`view` is not applied before actions: `available` and `run` receive the raw stored state, so an action that depends on migrated state must apply the same logic itself (Automate's `restart-draft` does).
+
+Automate uses all three (`games/automate/server.js`): `view` migrates drafts saved under older rules and blocks ones it cannot continue, `validateUpdate` allows one legal placement or move at a time and computes the result from the position, and the `restart-draft` action clears a blocked draft. Deleting a game folder removes its hook with it; no platform code names a game.
+
+Tests follow the same split. `npm run test:platform` (`server/**/*.test.js`) uses only fixture games that the tests create and delete themselves, never a real game from `games/`. Each game's own tests, including tests of its hook, live in `games/<slug>/tests/*.cjs` and run with `npm run test:games`. `npm test` runs both.
+
 ## Client
 
-Four routes with `react-router-dom`. `App.jsx` fetches `/api/me` once, keeps `user` in state, and renders a `<nav>` on every page: site name linking to `/`, then either "`<name>` · Log out" or "Log in · Register".
+Routes with `react-router-dom`. `App.jsx` fetches `/api/me` once, keeps `user` in state, and renders `Navbar` on every page: the REACHNID logo, links to Home, Games, Leaderboard, About Us and Contact, a light/dark theme switch (`useTheme` writes `<html data-theme>` and remembers it in `localStorage`), then either "`<name>` · Log out" or "Sign in".
 
-`api.js` is one function, `api(method, path, body)`, returning `{ status, data }` (same shape as `http` in `bridge.js`).
+`utils/api.js` is one function, `api(method, path, body)`, returning `{ status, data }` (same shape as `http` in `utils/bridge.js`).
 
-**`/` Home** — `<h1>`, then a `<ul>` of games: title as a link to `/play/<slug>`, description beside it.
+Styles: `site.css` holds the base and Play page styles (its plain-element rules are wrapped in `:where()` so page classes always win); `reachnid.css` the navbar, About and Contact pages and the theme colours; `pages.css` the Games and Leaderboard pages; `auth.css` the sign-in page and the home page. Dark-mode rules key off `html[data-theme='dark']`.
 
-**`/login`, `/register`** — a form with name and password. On success set `user` and go to `/`. On failure show the `error` text in a `<p role="alert">`.
+**`/` Home** — welcome banner with the arcade machine and a "Browse games" button, then the three feature cards (Games, Connect, Leaderboard) linking to their pages.
+
+**`/play` Games** — a card per game from `GET /api/games`: thumbnail (or the title's first letter), single player / online label, description and a Play button linking to `/play/<slug>`. (The list lives at `/play`, not `/games`, because `/games/*` is where Express serves the game folders.)
+
+**`/leaderboard` Leaderboard** — a game picker and that game's top 10 from `GET /api/games/:slug/leaderboard` (best score, or wins for match games).
+
+**`/login`, `/register`** — both show the sign-in page: a sign-in card, the arcade machine and a register card (username, password, confirm). On success set `user` and go to `/`. On failure show the `error` text in a `<p role="alert">`.
+
+**`/about`, `/contact`** — the team cards, and a contact form that checks its fields (there is no contact endpoint yet).
 
 **`/play/:slug` Play** — fetch the game (show "Game not found" on 404), then render:
 
@@ -170,13 +233,14 @@ Four routes with `react-router-dom`. `App.jsx` fetches `/api/me` once, keeps `us
 Lobby for `match` games. The current match comes from the `?match=<id>` query parameter.
 
 - No `match` parameter: the iframe runs the game in local mode. Above it show a "New online match" button (guests see "Log in to play online" instead) and a list of matches from `GET /api/games/:slug/matches`, each with the host's name and a "Join" button (or "Resume" for the requester's own). Refresh the list every 5 seconds. New match → `POST`, then navigate to `?match=<id>`. Join → `POST …/join`, then navigate.
-- With a `match` parameter: show one status line driven by the bridge's `onMatch` callback — for two-player games, "Waiting for an opponent" or "ann vs bob — in progress"; for four-player games, waiting displays the occupied seat count (e.g. "2/4") and active matches list all players. A finished match displays the winner or "draw". If the user is logged in, not in the match, and it is `waiting`, show a "Join this match" button. Always show a "Leave" link back to `/play/<slug>`. For an Automate match that needs a restart, show a "Restart draft" button (in the lobby list and on the match page).
+- With a `match` parameter: show one status line driven by the bridge's `onMatch` callback — for two-player games, "Waiting for an opponent" or "ann vs bob — in progress"; for four-player games, waiting displays the occupied seat count (e.g. "2/4") and active matches list all players. A finished match displays the winner or "draw". If the user is logged in, not in the match, and it is `waiting`, show a "Join this match" button. Always show a "Leave" link back to `/play/<slug>`. If the match is `blocked`, show the message, and show a button for each entry in `actions` (in the lobby list and on the match page).
 
-**Dev shortcuts** — in `vite` dev mode only, `?dev=1` on the home or play page adds an iframe reload button and, on a waiting Automate match, a "Copy invite link" button. They are not in production builds.
+**Dev shortcuts** — in `vite` dev mode only, `?dev=1` on the home, games or play page adds an iframe reload button and, on a waiting match, a "Copy invite link" button. They are not in production builds.
 
 ## Known limits
 
 - Scores and results for other games rely on browser reports. Automate validates legal draft transitions, legal battle moves, and results, but the runner's browser still supplies the moves, so their Stockfish origin is unverified.
 - Games share the site's origin, so a game could call the API directly. They are asked not to in `GAMES.md`.
+- A game's `server.js` runs inside the Express process with full Node access (files, network, database, environment). Nothing sandboxes it; review is the only safeguard.
 - Match updates arrive by polling every 1.5 seconds. No real-time transport.
 - If the runner of an Automate battle closes their browser, the battle pauses until they return.
