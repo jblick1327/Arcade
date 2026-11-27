@@ -49,3 +49,5 @@ To use a persistent database instead (a local `mongod` such as `mongodb://127.0.
 - `games/package.json` only marks game files as CommonJS so the games' Node tests (and server hooks) can use `require` despite the root `"type": "module"`.
 - A game's tests can be run alone, e.g. `node --test games/scarab-21/tests/rules.cjs`. CI (`.github/workflows/ci.yml`) runs the tests, the build, the smoke test and a high-severity `npm audit` on every push and pull request.
 - Hosting on Render + MongoDB Atlas is covered in [ARCHITECTURE.md](ARCHITECTURE.md#free-hosting-render--mongodb-atlas).
+
+<!-- Temporary Render PR preview verification. -->
