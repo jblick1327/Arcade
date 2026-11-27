@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: arcade-preview
+    runtime: node
+    plan: free
+    region: virginia
+    branch: master
+    buildCommand: npm ci --include=dev && npm run build && node server/prefetch-mongod.js --force
+    startCommand: npm start -- --memory-db
+    healthCheckPath: /healthz
+    autoDeployTrigger: 'off'
+    previews:
+      generation: manual
+    envVars:
+      - key: NODE_VERSION
+        value: '22'
+      - key: NODE_ENV
+        value: production

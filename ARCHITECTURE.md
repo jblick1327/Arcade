@@ -77,7 +77,11 @@ Free Render services sleep after 15 minutes without incoming traffic and can tak
 
 ### PR previews
 
-Render can deploy each pull request to its own temporary URL. Turn it on in the service's **Previews** tab: **Manual** creates a preview only for PRs with `[render preview]` in the title; **Automatic** creates one for every PR. Previews copy production's environment, including `MONGODB_URI`, so the server ignores it and starts empty on the in-memory database. A preview's data is lost whenever it sleeps or redeploys. Previews of a Free service are free, but they share the workspace's monthly Free instance hours with production.
+Keep PR previews **Off** on the production service. To set up previews, create a separate Render Blueprint from the `master` branch using `render.preview.yaml` as its **Blueprint Path**. Review the plan for a single new Free web service before applying it.
+
+The preview service uses **Manual** mode. A maintainer can request a preview using the `render-preview` label. Render also accepts `[render preview]` in a PR title, and whether outside forks can trigger a preview is unverified. New commits on a previewed PR redeploy its temporary instance until the PR closes or merges.
+
+The preview service and its PR instances run with a throwaway MongoDB. Render copies the base service's settings into new PR instances, so keep production credentials, secret files and shared environment groups off the preview service. A preview's data is lost whenever it sleeps or redeploys. The preview service and its PR instances share the workspace's 750 monthly Free instance hours with production.
 
 ## Static serving (server/server.js)
 

@@ -6,5 +6,5 @@
 
 - [ ] `npm test` and `npm run build` pass locally (CI runs them again, plus a smoke test)
 - [ ] Changes stay in my own game folder, or I've said above why they don't
-- [ ] For UI changes: screenshots or a preview link (add `[render preview]` to the title for a live preview)
+- [ ] For UI changes: screenshots or a preview link (ask a maintainer to request a live preview)
 - [ ] Trello card:
